@@ -154,11 +154,9 @@
                 messagingSenderId: "716119578109",
                 appId: "1:716119578109:web:01e8b9dad7b17c91d63594"
             };
-
             const app = initializeApp(firebaseConfig);
             const db = getFirestore(app);
             const matchesCollection = collection(db, "matches");
-
             let historicalData = [], parsedDataCache = [], oddsSlider, probSlider, selectedLeagues = [], selectedTips = [];
             const allMarketTips = { "1X2": ["1", "X", "2"],"Doppia chance": ["1X", "X2", "12"],"Gol/No Gol": ["Gol", "No Gol"],"Numero di gol": ["-0.5", "+0.5", "-1.5", "+1.5", "-2.5", "+2.5", "-3.5", "+3.5", "-4.5", "+4.5"] };
             const fileUpload = document.getElementById('file-upload'), matchDateInput = document.getElementById('match-date'), parserStatus = document.getElementById('parser-status'), saveDataBtn = document.getElementById('save-data-btn'), clearDataBtn = document.getElementById('clear-data-btn'), filterLeague = document.getElementById('filter-league'), filterDateStart = document.getElementById('filter-date-start'), filterDateEnd = document.getElementById('filter-date-end'), resetFiltersBtn = document.getElementById('reset-filters-btn'), statsContainer = document.getElementById('stats-summary-container'), filteredMatchesBody = document.getElementById('filtered-matches-body'), filteredCount = document.getElementById('filtered-count'), loadingOverlay = document.getElementById('loading-overlay'), deleteDateInput = document.getElementById('delete-date'), deleteByDateBtn = document.getElementById('delete-by-date-btn'), exportDataBtn = document.getElementById('export-data-btn'), oddsRangeValues = document.getElementById('odds-range-values'), oddsSliderElement = document.getElementById('filter-odds-slider'), probRangeValues = document.getElementById('prob-range-values'), probSliderElement = document.getElementById('filter-probability-slider'), tipFilterContainer = document.getElementById('tip-filter-container'), tipFilterCount = document.getElementById('tip-filter-count'), leagueFilterContainer = document.getElementById('league-filter-container'), leagueFilterCount = document.getElementById('league-filter-count'), pages = document.querySelectorAll('.page'), navButtons = document.querySelectorAll('.nav-button');
@@ -243,6 +241,9 @@
                 selectedTips = []; document.querySelectorAll('#tip-filter-container .filter-option.selected').forEach(el => el.classList.remove('selected')); updateMultiSelectCount(tipFilterContainer, tipFilterCount);
                 probSlider.reset(); oddsSlider.reset(); filterDateStart.value = ''; filterDateEnd.value = ''; applyFiltersAndRender();
             };
+            const handleFileUpload = (event) => { const file = event.target.files[0]; const matchDate = matchDateInput.value; if (!file || !matchDate) { parserStatus.textContent = 'Per favore, seleziona data e file.'; return; } saveDataBtn.disabled = true; parserStatus.textContent = `Leggendo ${file.name}...`; const reader = new FileReader(); reader.onload = (e) => { const text = e.target.result; try { parsedDataCache = parseCSVText(text, matchDate); if (parsedDataCache.length === 0) { parserStatus.textContent = 'Nessuna partita valida trovata nel file.'; return; } parserStatus.textContent = `Analisi completata: ${parsedDataCache.length} partite trovate. Pronto per salvare.`; saveDataBtn.disabled = false; } catch (error) { console.error("Errore durante l'analisi:", error); parserStatus.textContent = 'Errore nell\'analisi del file.'; } }; reader.readAsText(file, 'UTF-8'); };
+            const calculateStats = (data) => { if (data.length === 0) return { wins: 0, total: 0, winRate: 0 }; const wins = data.filter(bet => bet.result).length; const total = data.length; const winRate = total > 0 ? (wins / total) * 100 : 0; return { wins, total, winRate }; };
+            const renderFilteredStats = (data) => { const stats = calculateStats(data); const losses = stats.total - stats.wins; statsContainer.innerHTML = `<div class="stat-box p-4 rounded-xl text-center"><h3 class="font-semibold text-gray-500 text-sm">Partite Totali</h3><p class="text-4xl font-bold mt-1 stat-neutral">${stats.total}</p></div><div class="stat-box p-4 rounded-xl text-center"><h3 class="font-semibold text-gray-500 text-sm">Vinte</h3><p class="text-4xl font-bold mt-1 stat-positive">${stats.wins}</p></div><div class="stat-box p-4 rounded-xl text-center"><h3 class="font-semibold text-gray-500 text-sm">Perse</h3><p class="text-4xl font-bold mt-1 stat-negative">${losses}</p></div><div class="stat-box p-4 rounded-xl text-center"><h3 class="font-semibold text-gray-500 text-sm">Win Rate</h3><p class="text-4xl font-bold mt-1 ${stats.winRate >= 50 ? 'stat-positive' : 'stat-negative'}">${stats.winRate.toFixed(1)}%</p></div>`; };
             const init = async () => {
                 matchDateInput.valueAsDate = new Date();
                 fileUpload.addEventListener('change', handleFileUpload);
@@ -259,7 +260,6 @@
                 applyFiltersAndRender();
                 showPage('page-analysis');
             };
-            // ... (altre funzioni) ...
             init();
         });
     </script>
