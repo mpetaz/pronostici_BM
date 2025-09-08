@@ -48,11 +48,7 @@
                     </div>
                     <div class="border-t lg:border-t-0 lg:border-l border-gray-200 pl-0 lg:pl-8 pt-6 lg:pt-0">
                         <h3 class="text-lg font-semibold mb-3">Azioni sul Database</h3>
-                        <div class="mb-4">
-                           <label class="block text-sm font-semibold mb-2">Esporta Dati</label>
-                           <button id="export-data-btn" class="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2.5 px-4 rounded-lg">Esporta in CSV</button>
-                        </div>
-                        <div>
+                         <div>
                            <label class="block text-sm font-semibold mb-2">Azione Drastica</label>
                            <button id="clear-data-btn" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 px-4 rounded-lg">Azzera Tutto</button>
                         </div>
@@ -108,7 +104,7 @@
             const matchesCollection = collection(db, "matches");
             let historicalData = [], parsedDataCache = [];
             
-            const fileUpload = document.getElementById('file-upload'), matchDateInput = document.getElementById('match-date'), parserStatus = document.getElementById('parser-status'), saveDataBtn = document.getElementById('save-data-btn'), clearDataBtn = document.getElementById('clear-data-btn'), filterLeague = document.getElementById('filter-league'), filterTip = document.getElementById('filter-tip'), filterProbability = document.getElementById('filter-probability'), filterOdds = document.getElementById('filter-odds'), resetFiltersBtn = document.getElementById('reset-filters-btn'), statsContainer = document.getElementById('stats-summary-container'), filteredMatchesBody = document.getElementById('filtered-matches-body'), filteredCount = document.getElementById('filtered-count'), loadingOverlay = document.getElementById('loading-overlay'), exportDataBtn = document.getElementById('export-data-btn'), pages = document.querySelectorAll('.page'), navButtons = document.querySelectorAll('.nav-button');
+            const fileUpload = document.getElementById('file-upload'), matchDateInput = document.getElementById('match-date'), parserStatus = document.getElementById('parser-status'), saveDataBtn = document.getElementById('save-data-btn'), clearDataBtn = document.getElementById('clear-data-btn'), filterLeague = document.getElementById('filter-league'), filterTip = document.getElementById('filter-tip'), filterProbability = document.getElementById('filter-probability'), filterOdds = document.getElementById('filter-odds'), resetFiltersBtn = document.getElementById('reset-filters-btn'), statsContainer = document.getElementById('stats-summary-container'), filteredMatchesBody = document.getElementById('filtered-matches-body'), filteredCount = document.getElementById('filtered-count'), loadingOverlay = document.getElementById('loading-overlay'), pages = document.querySelectorAll('.page'), navButtons = document.querySelectorAll('.nav-button');
 
             const determineResult = (market, tip, score) => {
                 const scoreParts = score.split('-'); if (scoreParts.length < 2) return false;
@@ -121,23 +117,49 @@
                 else if (cleanMarket.includes('gol/no gol')) { if (cleanTip.includes('SI') || cleanTip.includes('GOL') || cleanTip.includes('GG')) return homeGoals > 0 && awayGoals > 0; if (cleanTip.includes('NO') || cleanTip.includes('NG')) return homeGoals === 0 || awayGoals === 0; }
                 return false;
             };
-
+            
             const parseCSVText = (text, matchDate) => {
                 const matches = []; const lines = text.trim().split('\n'); if (lines.length < 2) return [];
                 const delimiter = lines[0].includes(';') ? ';' : ',';
+                const headers = lines[0].trim().toLowerCase().split(delimiter);
+                const legaIndex = headers.indexOf('lega');
+                const partitaIndex = headers.indexOf('partita');
+                const risultatoIndex = headers.indexOf('risultato');
+                const probIndex = headers.indexOf('probabilità');
+                const mercatoIndex = headers.indexOf('mercato');
+                const tipIndex = headers.indexOf('tip');
+                const quotaIndex = headers.indexOf('quota');
+
                 for (let i = 1; i < lines.length; i++) {
                     const line = lines[i].trim(); if (!line) continue;
                     const columns = line.split(delimiter).map(c => c.trim().replace(/"/g, ''));
-                    if (columns.length < 9) continue;
+                    if (columns.length < 7) continue;
                     try {
-                        const [homeTeam, awayTeam, homeGoalsStr, awayGoalsStr, market, tip, probString, oddsString, league] = columns;
-                        if (!homeTeam || !awayTeam || !market || !tip) continue;
-                        let homeGoals = parseInt(homeGoalsStr, 10); let awayGoals = parseInt(awayGoalsStr, 10);
-                        let probability = parseInt(probString.replace('%', ''), 10); let odds = parseFloat(oddsString.replace(',', '.'));
-                        if (isNaN(homeGoals)) homeGoals = 0; if (isNaN(awayGoals)) awayGoals = 0;
-                        if (isNaN(probability)) probability = 0; if (isNaN(odds)) odds = 0;
+                        const league = columns[legaIndex];
+                        const matchStr = columns[partitaIndex];
+                        const scoreStr = columns[risultatoIndex];
+                        const probString = columns[probIndex];
+                        const market = columns[mercatoIndex];
+                        const tip = columns[tipIndex];
+                        const oddsString = columns[quotaIndex];
+
+                        if (!matchStr || !scoreStr) continue;
+
+                        const [homeTeam, awayTeam] = matchStr.split(' - ').map(s => s.trim());
+                        const scoreParts = scoreStr.split(' - ');
+                        let homeGoals = parseInt(scoreParts[0], 10);
+                        let awayGoals = parseInt(scoreParts[1], 10);
+                        let probability = parseInt(probString.replace('%', ''), 10);
+                        let odds = parseFloat(oddsString.replace(',', '.'));
+
+                        if (isNaN(homeGoals)) homeGoals = 0;
+                        if (isNaN(awayGoals)) awayGoals = 0;
+                        if (isNaN(probability)) probability = 0;
+                        if (isNaN(odds)) odds = 0;
+
                         const score = `${homeGoals}-${awayGoals}`;
                         const result = determineResult(market, tip, score);
+
                         matches.push({ date: matchDate, homeTeam, awayTeam, score, probability, market, tip, odds, league: league || 'Non specificato', result });
                     } catch (e) { console.warn(`Riga saltata: "${line}"`, e); }
                 }
@@ -147,7 +169,6 @@
             const handleFileUpload = (event) => { const file = event.target.files[0]; const matchDate = matchDateInput.value; if (!file || !matchDate) { parserStatus.textContent = 'Seleziona data e file.'; return; } saveDataBtn.disabled = true; parserStatus.textContent = `Leggendo ${file.name}...`; const reader = new FileReader(); reader.onload = (e) => { const text = e.target.result; try { parsedDataCache = parseCSVText(text, matchDate); if (parsedDataCache.length === 0) { parserStatus.textContent = 'Nessuna partita valida trovata.'; return; } parserStatus.textContent = `Analisi completata: ${parsedDataCache.length} partite trovate. Pronto per salvare.`; saveDataBtn.disabled = false; } catch (error) { console.error("Errore analisi:", error); parserStatus.textContent = 'Errore analisi file.'; } }; reader.readAsText(file, 'UTF-8'); };
             const handleSaveData = async () => { if (parsedDataCache.length === 0) return; saveDataBtn.disabled = true; parserStatus.textContent = 'Controllo duplicati...'; const newEntries = parsedDataCache.filter(parsedBet => !historicalData.some(savedBet => savedBet.homeTeam === parsedBet.homeTeam && savedBet.awayTeam === parsedBet.awayTeam && savedBet.tip === parsedBet.tip && savedBet.league === parsedBet.league)); if (newEntries.length === 0) { parserStatus.textContent = `Nessuna nuova partita. (${parsedDataCache.length} erano già presenti).`; fileUpload.value = ''; saveDataBtn.disabled = true; return; } parserStatus.textContent = `Salvataggio di ${newEntries.length} nuove partite...`; try { const batch = writeBatch(db); newEntries.forEach(entry => { const newMatchRef = doc(matchesCollection); batch.set(newMatchRef, entry); }); await batch.commit(); await loadDataFromFirestore(); populateFilters(); applyFiltersAndRender(); const duplicateCount = parsedDataCache.length - newEntries.length; parserStatus.textContent = `${newEntries.length} nuove partite salvate! ${duplicateCount} duplicate ignorate.`; } catch (error) { console.error("Errore nel salvataggio: ", error); parserStatus.textContent = 'Errore durante il salvataggio.'; } finally { fileUpload.value = ''; } };
             const handleClearData = async () => { if (confirm("Sei sicuro di voler cancellare TUTTA la cronologia?")) { parserStatus.textContent = 'Cancellazione...'; try { const querySnapshot = await getDocs(matchesCollection); const batch = writeBatch(db); querySnapshot.forEach(doc => { batch.delete(doc.ref); }); await batch.commit(); await loadDataFromFirestore(); populateFilters(); applyFiltersAndRender(); parserStatus.textContent = 'Cronologia dati azzerata.'; } catch (error) { console.error("Errore cancellazione: ", error); parserStatus.textContent = 'Errore cancellazione.'; } } };
-            const handleExportData = () => { if (historicalData.length === 0) { alert("Non ci sono dati da esportare."); return; } const headers = "Data;Campionato;Squadra Casa;Squadra Ospite;Punteggio;Probabilità;Mercato;Tip;Quota;Esito"; const rows = historicalData.map(bet => { const resultText = bet.result ? "Vinta" : "Persa"; const scoreText = bet.score.includes('NaN') ? 'N/D' : bet.score; return [bet.date, bet.league, bet.homeTeam, bet.awayTeam, scoreText, `${bet.probability}%`, bet.market, bet.tip, bet.odds.toFixed(2), resultText].join(';'); }); const csvString = [headers, ...rows].join('\n'); const blob = new Blob(["\uFEFF" + csvString], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement("a"); const url = URL.createObjectURL(blob); link.setAttribute("href", url); const fileName = `betmines_export_${new Date().toISOString().slice(0, 10)}.csv`; link.setAttribute("download", fileName); link.style.visibility = 'hidden'; document.body.appendChild(link); link.click(); document.body.removeChild(link); };
             const showPage = (pageId) => { pages.forEach(page => { page.classList.remove('active'); }); document.getElementById(pageId).classList.add('active'); navButtons.forEach(button => { if (button.dataset.page === pageId) { button.classList.add('active'); } else { button.classList.remove('active'); } }); };
             const loadDataFromFirestore = async () => { loadingOverlay.style.display = 'flex'; loadingOverlay.style.opacity = '1'; try { const querySnapshot = await getDocs(matchesCollection); historicalData = []; querySnapshot.forEach((doc) => { historicalData.push(doc.data()); }); } catch (error) { console.error("Errore caricamento dati: ", error); alert("Impossibile caricare i dati."); } finally { loadingOverlay.style.opacity = '0'; setTimeout(() => { loadingOverlay.style.display = 'none'; }, 300); } };
             const populateFilters = () => {
@@ -159,24 +180,17 @@
                 filterOdds.innerHTML = `<option value="all">Tutte le Quote</option><option value="1.00-1.50">1.00 - 1.50</option><option value="1.51-2.00">1.51 - 2.00</option><option value="2.01-100">&gt; 2.00</option>`;
             };
             const applyFiltersAndRender = () => {
-                const fLeague = filterLeague.value;
-                const fTip = filterTip.value;
-                const fProb = filterProbability.value.split('-').map(Number);
-                const fOdds = filterOdds.value.split('-').map(Number);
-
+                const fLeague = filterLeague.value; const fTip = filterTip.value;
+                const fProb = filterProbability.value.split('-').map(Number); const fOdds = filterOdds.value.split('-').map(Number);
                 const filteredData = historicalData.filter(bet => {
                     const leagueMatch = fLeague === 'all' || bet.league === fLeague;
                     const tipMatch = fTip === 'all' || `${bet.market} - ${bet.tip}` === fTip;
                     let probMatch = true;
-                    if (fProb.length > 1) {
-                        if(fProb[0] === 0) probMatch = bet.probability < fProb[1];
-                        else probMatch = bet.probability >= fProb[0] && bet.probability < fProb[1];
-                    }
+                    if (fProb.length > 1) { if(fProb[0] === 0) probMatch = bet.probability < fProb[1]; else probMatch = bet.probability >= fProb[0] && bet.probability < fProb[1]; }
                     const oddsMatch = fOdds.length < 2 || (bet.odds >= fOdds[0] && bet.odds <= fOdds[1]);
                     return leagueMatch && tipMatch && probMatch && oddsMatch;
                 });
-                renderFilteredStats(filteredData);
-                renderFilteredMatches(filteredData);
+                renderFilteredStats(filteredData); renderFilteredMatches(filteredData);
             };
             const calculateStats = (data) => { if (data.length === 0) return { wins: 0, total: 0, winRate: 0 }; const wins = data.filter(bet => bet.result).length; const total = data.length; const winRate = total > 0 ? (wins / total) * 100 : 0; return { wins, total, winRate }; };
             const renderFilteredStats = (data) => { const stats = calculateStats(data); const losses = stats.total - stats.wins; statsContainer.innerHTML = `<div class="p-4 bg-gray-50 rounded-lg text-center"><h3 class="font-semibold text-sm text-gray-500">Partite Totali</h3><p class="text-3xl font-bold mt-1 text-blue-600">${stats.total}</p></div><div class="p-4 bg-gray-50 rounded-lg text-center"><h3 class="font-semibold text-sm text-gray-500">Vinte</h3><p class="text-3xl font-bold mt-1 text-green-600">${stats.wins}</p></div><div class="p-4 bg-gray-50 rounded-lg text-center"><h3 class="font-semibold text-sm text-gray-500">Perse</h3><p class="text-3xl font-bold mt-1 text-red-600">${losses}</p></div><div class="p-4 bg-gray-50 rounded-lg text-center"><h3 class="font-semibold text-sm text-gray-500">Win Rate</h3><p class="text-3xl font-bold mt-1 ${stats.winRate >= 50 ? 'text-green-600' : 'text-red-600'}">${stats.winRate.toFixed(1)}%</p></div>`; };
