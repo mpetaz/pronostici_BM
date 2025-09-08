@@ -3,22 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BetMines Pro App (Stabile)</title>
+    <title>BetMines Pro App (Step 1)</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
-        .card { background: white; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07); }
-        select, input[type="date"] { background-color: #f3f4f6; border: 1px solid #d1d5db; border-radius: 0.5rem; padding: 0.5rem; color: #1f2937; font-weight: 500; }
+        .card { background: white; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.07); }
         .custom-file-input::-webkit-file-upload-button { visibility: hidden; }
         .custom-file-input::before { content: 'Seleziona File .csv'; display: inline-block; background: #4f46e5; color: white; border-radius: 0.5rem; padding: 0.6rem 1rem; cursor: pointer; font-weight: 600; }
-        .result-tag { padding: 0.25rem 0.75rem; border-radius: 0.375rem; font-weight: 700; text-transform: uppercase; font-size: 0.75rem; display: inline-block; color: white; }
+        .result-tag { padding: 0.25rem 0.75rem; border-radius: 0.375rem; font-weight: 700; font-size: 0.75rem; color: white; }
         .result-win { background-color: #16a34a; } .result-loss { background-color: #dc2626; }
-        .nav-button { padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s; border: 2px solid transparent; }
-        .nav-button.active { background-color: #4f46e5; color: white; }
-        .nav-button:not(.active) { background-color: white; color: #4f46e5; border-color: #4f46e5; }
-        .page { display: none; }
-        .page.active { display: block; }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -26,64 +20,40 @@
         <div class="text-white text-xl font-semibold animate-pulse">Caricamento...</div>
     </div>
     <div class="container mx-auto p-4 md:p-8">
-        <header class="text-center mb-4"><h1 class="text-4xl md:text-5xl font-extrabold text-gray-900">BetMines Pro Dashboard</h1></header>
-        <nav class="flex justify-center items-center gap-4 mb-10 p-2 bg-gray-200 rounded-lg">
-            <button id="nav-dashboard" data-page="page-analysis" class="nav-button">📊 Dashboard</button>
-            <button id="nav-data" data-page="page-data" class="nav-button">🗂️ Gestione Dati</button>
-        </nav>
-        <main id="page-data" class="page">
-            <section class="mb-12 card p-6 rounded-2xl">
-                <h2 class="text-2xl font-bold mb-6">Gestione Dati</h2>
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div>
-                        <h3 class="text-lg font-semibold mb-3">Carica Nuove Partite</h3>
-                        <div class="flex flex-col sm:flex-row gap-4 items-end">
-                            <div><label for="match-date" class="block text-sm font-semibold mb-2">1. Data da Assegnare</label><input type="date" id="match-date" class="w-full"></div>
-                            <div class="flex-grow"><label for="file-upload" class="block text-sm font-semibold mb-2">2. File CSV</label><input id="file-upload" type="file" class="custom-file-input w-full" accept=".csv"></div>
-                        </div>
-                        <div class="flex items-center mt-4">
-                            <button id="save-data-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-lg" disabled>Salva Dati</button>
-                            <div id="parser-status" class="text-sm font-semibold text-gray-700 ml-4"></div>
-                        </div>
-                    </div>
-                    <div class="border-t lg:border-t-0 lg:border-l border-gray-200 pl-0 lg:pl-8 pt-6 lg:pt-0">
-                        <h3 class="text-lg font-semibold mb-3">Azioni sul Database</h3>
-                         <div>
-                           <label class="block text-sm font-semibold mb-2">Azione Drastica</label>
-                           <button id="clear-data-btn" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 px-4 rounded-lg">Azzera Tutto</button>
-                        </div>
-                    </div>
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-gray-900">BetMines Pro Dashboard</h1>
+        </header>
+        <main>
+            <section class="mb-8 card p-6 rounded-2xl">
+                <h2 class="text-2xl font-bold mb-4">Gestione Dati</h2>
+                <div class="flex flex-col sm:flex-row gap-4 items-end mb-4">
+                    <div><label for="match-date" class="block text-sm font-semibold mb-2">1. Data da Assegnare</label><input type="date" id="match-date" class="w-full bg-gray-200 border-gray-300 rounded-lg p-2"></div>
+                    <div class="flex-grow"><label for="file-upload" class="block text-sm font-semibold mb-2">2. File CSV (9 Colonne)</label><input id="file-upload" type="file" class="custom-file-input w-full" accept=".csv"></div>
+                </div>
+                <div class="flex items-center mt-4">
+                    <button id="save-data-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-lg" disabled>Salva Dati</button>
+                    <div id="parser-status" class="text-sm font-semibold text-gray-700 ml-4"></div>
+                </div>
+                <div class="mt-6 border-t pt-6">
+                    <label class="block text-sm font-semibold mb-2">Azione Drastica</label>
+                    <button id="clear-data-btn" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 px-4 rounded-lg">Azzera Tutto il Database</button>
+                </div>
+            </section>
+            <section class="card p-6 rounded-2xl">
+                <h2 class="text-2xl font-bold mb-4">Partite Caricate (<span id="match-count">0</span>)</h2>
+                <div class="overflow-x-auto bg-white rounded-lg max-h-96 overflow-y-auto border">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-gray-100 text-xs uppercase sticky top-0"><tr class="text-gray-600">
+                            <th class="p-3 font-semibold">Data</th><th class="p-3 font-semibold">Campionato</th><th class="p-3 font-semibold">Partita</th>
+                            <th class="p-3 font-semibold text-center">Punteggio</th><th class="p-3 font-semibold text-center">Prob.</th>
+                            <th class="p-3 font-semibold">Mercato</th><th class="p-3 font-semibold text-center">Tip</th><th class="p-3 font-semibold text-center">Quota</th>
+                            <th class="p-3 font-semibold text-center">Esito</th>
+                        </tr></thead>
+                        <tbody id="matches-body" class="divide-y"></tbody>
+                    </table>
                 </div>
             </section>
         </main>
-        <main id="page-analysis" class="page">
-            <section class="mb-12 card p-6 rounded-2xl">
-                <h2 class="text-2xl font-bold mb-6">Dashboard di Analisi</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                    <div><label for="filter-league" class="block text-sm font-semibold mb-2">Campionato</label><select id="filter-league" class="w-full"></select></div>
-                    <div><label for="filter-tip" class="block text-sm font-semibold mb-2">Tip Specifico</label><select id="filter-tip" class="w-full"></select></div>
-                    <div><label for="filter-probability" class="block text-sm font-semibold mb-2">Probabilità</label><select id="filter-probability" class="w-full"></select></div>
-                    <div><label for="filter-odds" class="block text-sm font-semibold mb-2">Quota</label><select id="filter-odds" class="w-full"></select></div>
-                </div>
-                 <div class="flex justify-end mb-6"><button id="reset-filters-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2.5 px-4 rounded-lg border">Resetta Filtri</button></div>
-                <div class="mb-6 pt-4 border-t"><div id="stats-summary-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div></div>
-                <div>
-                     <h3 class="text-xl font-bold mb-2">Partite Corrispondenti (<span id="filtered-count">0</span>)</h3>
-                     <div class="overflow-x-auto bg-white rounded-lg max-h-96 overflow-y-auto border">
-                        <table class="w-full text-sm text-left">
-                             <thead class="bg-gray-100 text-xs uppercase sticky top-0"><tr class="text-gray-600">
-                                    <th class="p-3 font-semibold">Data</th><th class="p-3 font-semibold">Campionato</th><th class="p-3 font-semibold">Partita</th>
-                                    <th class="p-3 font-semibold text-center">Punteggio</th><th class="p-3 font-semibold text-center">Prob.</th>
-                                    <th class="p-3 font-semibold">Mercato</th><th class="p-3 font-semibold text-center">Tip</th><th class="p-3 font-semibold text-center">Quota</th>
-                                    <th class="p-3 font-semibold text-center">Esito</th>
-                            </tr></thead>
-                            <tbody id="filtered-matches-body" class="divide-y"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-        </main>
-        <footer class="text-center mt-12 text-gray-500 text-sm"><p>Disclaimer: Questo strumento è a scopo educativo.</p></footer>
     </div>
 
     <script type="module">
@@ -104,7 +74,7 @@
             const matchesCollection = collection(db, "matches");
             let historicalData = [], parsedDataCache = [];
             
-            const fileUpload = document.getElementById('file-upload'), matchDateInput = document.getElementById('match-date'), parserStatus = document.getElementById('parser-status'), saveDataBtn = document.getElementById('save-data-btn'), clearDataBtn = document.getElementById('clear-data-btn'), filterLeague = document.getElementById('filter-league'), filterTip = document.getElementById('filter-tip'), filterProbability = document.getElementById('filter-probability'), filterOdds = document.getElementById('filter-odds'), resetFiltersBtn = document.getElementById('reset-filters-btn'), statsContainer = document.getElementById('stats-summary-container'), filteredMatchesBody = document.getElementById('filtered-matches-body'), filteredCount = document.getElementById('filtered-count'), loadingOverlay = document.getElementById('loading-overlay'), pages = document.querySelectorAll('.page'), navButtons = document.querySelectorAll('.nav-button');
+            const fileUpload = document.getElementById('file-upload'), matchDateInput = document.getElementById('match-date'), parserStatus = document.getElementById('parser-status'), saveDataBtn = document.getElementById('save-data-btn'), clearDataBtn = document.getElementById('clear-data-btn'), matchesBody = document.getElementById('matches-body'), matchCount = document.getElementById('match-count'), loadingOverlay = document.getElementById('loading-overlay');
 
             const determineResult = (market, tip, score) => {
                 const scoreParts = score.split('-'); if (scoreParts.length < 2) return false;
@@ -117,111 +87,55 @@
                 else if (cleanMarket.includes('gol/no gol')) { if (cleanTip.includes('SI') || cleanTip.includes('GOL') || cleanTip.includes('GG')) return homeGoals > 0 && awayGoals > 0; if (cleanTip.includes('NO') || cleanTip.includes('NG')) return homeGoals === 0 || awayGoals === 0; }
                 return false;
             };
-            
-            const parseCSVText = (text, matchDate) => {
-                const matches = []; const lines = text.trim().split('\n'); if (lines.length < 2) return [];
-                const delimiter = lines[0].includes(';') ? ';' : ',';
-                const headers = lines[0].trim().toLowerCase().split(delimiter);
-                const legaIndex = headers.indexOf('lega');
-                const partitaIndex = headers.indexOf('partita');
-                const risultatoIndex = headers.indexOf('risultato');
-                const probIndex = headers.indexOf('probabilità');
-                const mercatoIndex = headers.indexOf('mercato');
-                const tipIndex = headers.indexOf('tip');
-                const quotaIndex = headers.indexOf('quota');
 
+            const parseCSVText = (text, matchDate) => {
+                const matches = []; const lines = text.trim().split('\n');
+                if (lines.length < 2) return [];
+                const delimiter = lines[0].includes(';') ? ';' : ',';
                 for (let i = 1; i < lines.length; i++) {
                     const line = lines[i].trim(); if (!line) continue;
                     const columns = line.split(delimiter).map(c => c.trim().replace(/"/g, ''));
-                    if (columns.length < 7) continue;
+                    if (columns.length < 9) continue;
                     try {
-                        const league = columns[legaIndex];
-                        const matchStr = columns[partitaIndex];
-                        const scoreStr = columns[risultatoIndex];
-                        const probString = columns[probIndex];
-                        const market = columns[mercatoIndex];
-                        const tip = columns[tipIndex];
-                        const oddsString = columns[quotaIndex];
-
-                        if (!matchStr || !scoreStr) continue;
-
-                        const [homeTeam, awayTeam] = matchStr.split(' - ').map(s => s.trim());
-                        const scoreParts = scoreStr.split(' - ');
-                        let homeGoals = parseInt(scoreParts[0], 10);
-                        let awayGoals = parseInt(scoreParts[1], 10);
-                        let probability = parseInt(probString.replace('%', ''), 10);
-                        let odds = parseFloat(oddsString.replace(',', '.'));
-
-                        if (isNaN(homeGoals)) homeGoals = 0;
-                        if (isNaN(awayGoals)) awayGoals = 0;
-                        if (isNaN(probability)) probability = 0;
-                        if (isNaN(odds)) odds = 0;
-
+                        const [homeTeam, awayTeam, homeGoalsStr, awayGoalsStr, market, tip, probString, oddsString, league] = columns;
+                        if (!homeTeam || !awayTeam || !market || !tip) continue;
+                        let homeGoals = parseInt(homeGoalsStr, 10); let awayGoals = parseInt(awayGoalsStr, 10);
+                        let probability = parseInt(probString.replace('%', ''), 10); let odds = parseFloat(oddsString.replace(',', '.'));
+                        if (isNaN(homeGoals)) homeGoals = 0; if (isNaN(awayGoals)) awayGoals = 0;
+                        if (isNaN(probability)) probability = 0; if (isNaN(odds)) odds = 0;
                         const score = `${homeGoals}-${awayGoals}`;
                         const result = determineResult(market, tip, score);
-
                         matches.push({ date: matchDate, homeTeam, awayTeam, score, probability, market, tip, odds, league: league || 'Non specificato', result });
                     } catch (e) { console.warn(`Riga saltata: "${line}"`, e); }
                 }
                 return matches;
             };
-            
-            const handleFileUpload = (event) => { const file = event.target.files[0]; const matchDate = matchDateInput.value; if (!file || !matchDate) { parserStatus.textContent = 'Seleziona data e file.'; return; } saveDataBtn.disabled = true; parserStatus.textContent = `Leggendo ${file.name}...`; const reader = new FileReader(); reader.onload = (e) => { const text = e.target.result; try { parsedDataCache = parseCSVText(text, matchDate); if (parsedDataCache.length === 0) { parserStatus.textContent = 'Nessuna partita valida trovata.'; return; } parserStatus.textContent = `Analisi completata: ${parsedDataCache.length} partite trovate. Pronto per salvare.`; saveDataBtn.disabled = false; } catch (error) { console.error("Errore analisi:", error); parserStatus.textContent = 'Errore analisi file.'; } }; reader.readAsText(file, 'UTF-8'); };
-            const handleSaveData = async () => { if (parsedDataCache.length === 0) return; saveDataBtn.disabled = true; parserStatus.textContent = 'Controllo duplicati...'; const newEntries = parsedDataCache.filter(parsedBet => !historicalData.some(savedBet => savedBet.homeTeam === parsedBet.homeTeam && savedBet.awayTeam === parsedBet.awayTeam && savedBet.tip === parsedBet.tip && savedBet.league === parsedBet.league)); if (newEntries.length === 0) { parserStatus.textContent = `Nessuna nuova partita. (${parsedDataCache.length} erano già presenti).`; fileUpload.value = ''; saveDataBtn.disabled = true; return; } parserStatus.textContent = `Salvataggio di ${newEntries.length} nuove partite...`; try { const batch = writeBatch(db); newEntries.forEach(entry => { const newMatchRef = doc(matchesCollection); batch.set(newMatchRef, entry); }); await batch.commit(); await loadDataFromFirestore(); populateFilters(); applyFiltersAndRender(); const duplicateCount = parsedDataCache.length - newEntries.length; parserStatus.textContent = `${newEntries.length} nuove partite salvate! ${duplicateCount} duplicate ignorate.`; } catch (error) { console.error("Errore nel salvataggio: ", error); parserStatus.textContent = 'Errore durante il salvataggio.'; } finally { fileUpload.value = ''; } };
-            const handleClearData = async () => { if (confirm("Sei sicuro di voler cancellare TUTTA la cronologia?")) { parserStatus.textContent = 'Cancellazione...'; try { const querySnapshot = await getDocs(matchesCollection); const batch = writeBatch(db); querySnapshot.forEach(doc => { batch.delete(doc.ref); }); await batch.commit(); await loadDataFromFirestore(); populateFilters(); applyFiltersAndRender(); parserStatus.textContent = 'Cronologia dati azzerata.'; } catch (error) { console.error("Errore cancellazione: ", error); parserStatus.textContent = 'Errore cancellazione.'; } } };
-            const showPage = (pageId) => { pages.forEach(page => { page.classList.remove('active'); }); document.getElementById(pageId).classList.add('active'); navButtons.forEach(button => { if (button.dataset.page === pageId) { button.classList.add('active'); } else { button.classList.remove('active'); } }); };
-            const loadDataFromFirestore = async () => { loadingOverlay.style.display = 'flex'; loadingOverlay.style.opacity = '1'; try { const querySnapshot = await getDocs(matchesCollection); historicalData = []; querySnapshot.forEach((doc) => { historicalData.push(doc.data()); }); } catch (error) { console.error("Errore caricamento dati: ", error); alert("Impossibile caricare i dati."); } finally { loadingOverlay.style.opacity = '0'; setTimeout(() => { loadingOverlay.style.display = 'none'; }, 300); } };
-            const populateFilters = () => {
-                const leagues = [...new Set(historicalData.map(d => d.league).filter(l => l))].sort();
-                const tips = [...new Set(historicalData.map(d => `${d.market} - ${d.tip}`))].sort();
-                filterLeague.innerHTML = '<option value="all">Tutti i Campionati</option>' + leagues.map(l => `<option value="${l}">${l}</option>`).join('');
-                filterTip.innerHTML = '<option value="all">Tutti i Tip</option>' + tips.map(t => `<option value="${t}">${t}</option>`).join('');
-                filterProbability.innerHTML = `<option value="all">Tutte le Prob.</option><option value="80-101">&gt;= 80%</option><option value="70-80">70% - 79%</option><option value="60-70">60% - 69%</option><option value="0-60">&lt; 60%</option>`;
-                filterOdds.innerHTML = `<option value="all">Tutte le Quote</option><option value="1.00-1.50">1.00 - 1.50</option><option value="1.51-2.00">1.51 - 2.00</option><option value="2.01-100">&gt; 2.00</option>`;
-            };
-            const applyFiltersAndRender = () => {
-                const fLeague = filterLeague.value; const fTip = filterTip.value;
-                const fProb = filterProbability.value.split('-').map(Number); const fOdds = filterOdds.value.split('-').map(Number);
-                const filteredData = historicalData.filter(bet => {
-                    const leagueMatch = fLeague === 'all' || bet.league === fLeague;
-                    const tipMatch = fTip === 'all' || `${bet.market} - ${bet.tip}` === fTip;
-                    let probMatch = true;
-                    if (fProb.length > 1) { if(fProb[0] === 0) probMatch = bet.probability < fProb[1]; else probMatch = bet.probability >= fProb[0] && bet.probability < fProb[1]; }
-                    const oddsMatch = fOdds.length < 2 || (bet.odds >= fOdds[0] && bet.odds <= fOdds[1]);
-                    return leagueMatch && tipMatch && probMatch && oddsMatch;
-                });
-                renderFilteredStats(filteredData); renderFilteredMatches(filteredData);
-            };
-            const calculateStats = (data) => { if (data.length === 0) return { wins: 0, total: 0, winRate: 0 }; const wins = data.filter(bet => bet.result).length; const total = data.length; const winRate = total > 0 ? (wins / total) * 100 : 0; return { wins, total, winRate }; };
-            const renderFilteredStats = (data) => { const stats = calculateStats(data); const losses = stats.total - stats.wins; statsContainer.innerHTML = `<div class="p-4 bg-gray-50 rounded-lg text-center"><h3 class="font-semibold text-sm text-gray-500">Partite Totali</h3><p class="text-3xl font-bold mt-1 text-blue-600">${stats.total}</p></div><div class="p-4 bg-gray-50 rounded-lg text-center"><h3 class="font-semibold text-sm text-gray-500">Vinte</h3><p class="text-3xl font-bold mt-1 text-green-600">${stats.wins}</p></div><div class="p-4 bg-gray-50 rounded-lg text-center"><h3 class="font-semibold text-sm text-gray-500">Perse</h3><p class="text-3xl font-bold mt-1 text-red-600">${losses}</p></div><div class="p-4 bg-gray-50 rounded-lg text-center"><h3 class="font-semibold text-sm text-gray-500">Win Rate</h3><p class="text-3xl font-bold mt-1 ${stats.winRate >= 50 ? 'text-green-600' : 'text-red-600'}">${stats.winRate.toFixed(1)}%</p></div>`; };
-            const renderFilteredMatches = (data) => {
-                filteredCount.textContent = data.length;
-                if (data.length === 0) { filteredMatchesBody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-gray-500 font-semibold">Nessuna partita corrisponde.</td></tr>`; return; }
-                filteredMatchesBody.innerHTML = data.sort((a,b) => new Date(b.date) - new Date(a.date)).map(bet => {
+
+            const renderTable = (data) => {
+                matchCount.textContent = data.length;
+                if (data.length === 0) { matchesBody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-gray-500">Nessun dato presente. Carica un file per iniziare.</td></tr>`; return; }
+                matchesBody.innerHTML = data.sort((a,b) => new Date(b.date) - new Date(a.date)).map(bet => {
                     const formattedDate = new Date(bet.date + 'T00:00:00').toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' });
                     const scoreText = bet.score.includes('NaN') ? 'N/D' : bet.score;
-                    return `<tr class="text-gray-800"><td class="p-3 text-xs text-gray-600">${formattedDate}</td><td class="p-3 text-sm text-gray-500">${bet.league}</td><td class="p-3 font-bold">${bet.homeTeam} vs ${bet.awayTeam}</td><td class="p-3 text-center font-mono font-bold">${scoreText}</td><td class="p-3 text-center">${bet.probability}%</td><td class="p-3">${bet.market}</td><td class="p-3 text-center font-bold">${bet.tip}</td><td class="p-3 text-center">${bet.odds.toFixed(2)}</td><td class="p-3 text-center"><span class="result-tag ${bet.result ? 'result-win' : 'result-loss'}">${bet.result ? 'Vinta' : 'Persa'}</span></td></tr>`;
+                    return `<tr class="text-gray-800"><td class="p-3 text-xs">${formattedDate}</td><td class="p-3 text-sm">${bet.league}</td><td class="p-3 font-bold">${bet.homeTeam} vs ${bet.awayTeam}</td><td class="p-3 text-center">${scoreText}</td><td class="p-3 text-center">${bet.probability}%</td><td class="p-3">${bet.market}</td><td class="p-3 text-center font-bold">${bet.tip}</td><td class="p-3 text-center">${bet.odds.toFixed(2)}</td><td class="p-3 text-center"><span class="result-tag ${bet.result ? 'result-win' : 'result-loss'}">${bet.result ? 'Vinta' : 'Persa'}</span></td></tr>`;
                 }).join('');
             };
-            const resetFilters = () => {
-                filterLeague.value = 'all'; filterTip.value = 'all';
-                filterProbability.value = 'all'; filterOdds.value = 'all';
-                applyFiltersAndRender();
-            };
+            
+            const handleFileUpload = (event) => { const file = event.target.files[0]; const matchDate = matchDateInput.value; if (!file || !matchDate) { parserStatus.textContent = 'Seleziona data e file.'; return; } saveDataBtn.disabled = true; parserStatus.textContent = `Leggendo ${file.name}...`; const reader = new FileReader(); reader.onload = (e) => { const text = e.target.result; try { parsedDataCache = parseCSVText(text, matchDate); if (parsedDataCache.length === 0) { parserStatus.textContent = 'Nessuna partita valida trovata.'; return; } parserStatus.textContent = `Letti ${parsedDataCache.length} record. Pronto per salvare.`; saveDataBtn.disabled = false; } catch (error) { parserStatus.textContent = 'Errore analisi file.'; } }; reader.readAsText(file, 'UTF-8'); };
+            const handleSaveData = async () => { if (parsedDataCache.length === 0) return; saveDataBtn.disabled = true; parserStatus.textContent = 'Controllo duplicati...'; const newEntries = parsedDataCache.filter(parsedBet => !historicalData.some(savedBet => savedBet.homeTeam === parsedBet.homeTeam && savedBet.awayTeam === parsedBet.awayTeam && savedBet.tip === parsedBet.tip && savedBet.league === parsedBet.league)); if (newEntries.length === 0) { parserStatus.textContent = `Nessuna nuova partita. (${parsedDataCache.length} erano già presenti).`; fileUpload.value = ''; return; } parserStatus.textContent = `Salvataggio di ${newEntries.length} nuove partite...`; try { const batch = writeBatch(db); newEntries.forEach(entry => { const newMatchRef = doc(matchesCollection); batch.set(newMatchRef, entry); }); await batch.commit(); await loadDataFromFirestore(); renderTable(historicalData); const duplicateCount = parsedDataCache.length - newEntries.length; parserStatus.textContent = `${newEntries.length} nuove partite salvate!`; } catch (error) { parserStatus.textContent = 'Errore durante il salvataggio.'; } finally { fileUpload.value = ''; } };
+            const handleClearData = async () => { if (confirm("Sei sicuro di voler cancellare TUTTA la cronologia?")) { parserStatus.textContent = 'Cancellazione...'; try { const querySnapshot = await getDocs(matchesCollection); const batch = writeBatch(db); querySnapshot.forEach(doc => { batch.delete(doc.ref); }); await batch.commit(); await loadDataFromFirestore(); renderTable(historicalData); parserStatus.textContent = 'Cronologia azzerata.'; } catch (error) { parserStatus.textContent = 'Errore cancellazione.'; } } };
+            const showPage = (pageId) => { pages.forEach(page => page.classList.remove('active')); document.getElementById(pageId).classList.add('active'); navButtons.forEach(button => { button.dataset.page === pageId ? button.classList.add('active') : button.classList.remove('active'); }); };
+            const loadDataFromFirestore = async () => { loadingOverlay.style.display = 'flex'; try { const querySnapshot = await getDocs(matchesCollection); historicalData = []; querySnapshot.forEach((doc) => { historicalData.push(doc.data()); }); } catch (error) { alert("Impossibile caricare i dati."); } finally { loadingOverlay.style.display = 'none'; } };
+            
             const init = async () => {
                 matchDateInput.valueAsDate = new Date();
-                const allFilters = [filterLeague, filterTip, filterProbability, filterOdds];
-                allFilters.forEach(el => el.addEventListener('change', applyFiltersAndRender));
                 fileUpload.addEventListener('change', handleFileUpload);
                 saveDataBtn.addEventListener('click', handleSaveData);
                 clearDataBtn.addEventListener('click', handleClearData);
-                exportDataBtn.addEventListener('click', handleExportData);
-                resetFiltersBtn.addEventListener('click', resetFilters);
-                navButtons.forEach(button => { button.addEventListener('click', () => showPage(button.dataset.page)); });
+                navButtons.forEach(button => { button.addEventListener('click', () => { showPage(button.dataset.page); }); });
                 await loadDataFromFirestore();
-                populateFilters();
-                applyFiltersAndRender();
-                showPage('page-analysis');
+                renderTable(historicalData); // Mostra i dati iniziali
+                showPage('page-analysis'); // Mostra la dashboard come pagina iniziale
             };
             init();
         });
