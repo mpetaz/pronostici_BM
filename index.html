@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BetMines Pro App (Finale Corretto)</title>
+    <title>BetMines Pro App (Corretto)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -38,8 +38,8 @@
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
-    <div id="loading-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-300">
-        <div class="text-white text-xl font-semibold animate-pulse">Caricamento dati...</div>
+    <div id="loading-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+        <div class="text-white text-xl font-semibold animate-pulse">Caricamento...</div>
     </div>
     <div class="container mx-auto p-4 md:p-8">
         <header class="text-center mb-4"><h1 class="text-4xl md:text-5xl font-extrabold text-gray-900">BetMines Pro Dashboard</h1></header>
@@ -55,7 +55,7 @@
                         <h3 class="text-lg font-semibold mb-3">Carica Nuove Partite</h3>
                         <div class="flex flex-col sm:flex-row gap-4 items-end">
                             <div><label for="match-date" class="block text-sm font-semibold mb-2">1. Data da Assegnare</label><input type="date" id="match-date" class="w-full"></div>
-                            <div class="flex-grow"><label for="file-upload" class="block text-sm font-semibold mb-2">2. File CSV (9 Colonne)</label><input id="file-upload" type="file" class="custom-file-input w-full" accept=".csv"></div>
+                            <div class="flex-grow"><label for="file-upload" class="block text-sm font-semibold mb-2">2. File CSV</label><input id="file-upload" type="file" class="custom-file-input w-full" accept=".csv"></div>
                         </div>
                         <div class="flex flex-col sm:flex-row gap-3 items-center mt-4">
                             <button id="save-data-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-lg shadow-lg hover:shadow-xl disabled:bg-gray-300 disabled:shadow-none disabled:text-gray-500 w-full sm:w-auto" disabled>Salva Dati</button>
@@ -67,13 +67,6 @@
                         <div class="mb-4">
                             <label class="block text-sm font-semibold mb-2">Esporta Dati</label>
                             <button id="export-data-btn" class="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2.5 px-4 rounded-lg shadow-md hover:shadow-lg w-full sm:w-auto">Esporta in CSV</button>
-                        </div>
-                        <div class="mb-4">
-                            <label for="delete-date" class="block text-sm font-semibold mb-2">Cancella per Data Inserimento</label>
-                            <div class="flex flex-col sm:flex-row gap-3">
-                                <input type="date" id="delete-date" class="w-full">
-                                <button id="delete-by-date-btn" class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-4 rounded-lg shadow-md hover:shadow-lg w-full sm:w-auto">Cancella</button>
-                            </div>
                         </div>
                          <div>
                             <label class="block text-sm font-semibold mb-2">Azione Drastica</label>
@@ -164,13 +157,16 @@
                 const scoreParts = score.split('-'); if (scoreParts.length < 2) return false;
                 const homeGoals = parseInt(scoreParts[0], 10); const awayGoals = parseInt(scoreParts[1], 10);
                 if (isNaN(homeGoals) || isNaN(awayGoals)) return false;
-                const totalGoals = homeGoals + awayGoals; const cleanMarket = market.toLowerCase().trim(); const cleanTip = tip.toUpperCase().trim();
+                const totalGoals = homeGoals + awayGoals; 
+                const cleanMarket = market.toLowerCase().trim(); 
+                const cleanTip = tip.toUpperCase().trim();
                 if (cleanMarket.includes('numero di gol')) { const value = parseFloat(tip.replace(/[+-]/g, '')); if (tip.includes('+')) return totalGoals > value; if (tip.includes('-')) return totalGoals < value; }
                 else if (cleanMarket.includes('1x2')) { if (cleanTip === '1') return homeGoals > awayGoals; if (cleanTip === 'X') return homeGoals === awayGoals; if (cleanTip === '2') return homeGoals < awayGoals; }
-                else if (cleanMarket.includes('doppia chance')) { if (cleanTip === '1X') return homeGoals >= awayGoals; if (cleanTip === 'X2') return homeGoals <= awayGoals; if (cleanTip === '12') return homeGoals !== awayGoals; }
+                else if (cleanMarket.includes('doppia chance') || cleanMarket.includes('double chance')) { if (cleanTip === '1X') return homeGoals >= awayGoals; if (cleanTip === 'X2') return homeGoals <= awayGoals; if (cleanTip === '12') return homeGoals !== awayGoals; }
                 else if (cleanMarket.includes('gol/no gol')) { if (cleanTip.includes('SI') || cleanTip.includes('GOL') || cleanTip.includes('GG')) return homeGoals > 0 && awayGoals > 0; if (cleanTip.includes('NO') || cleanTip.includes('NG')) return homeGoals === 0 || awayGoals === 0; }
                 return false;
             };
+
             const parseCSVText = (text, matchDate) => {
                 const matches = []; const lines = text.trim().split('\n'); if (lines.length < 2) return [];
                 const delimiter = lines[0].includes(';') ? ';' : ',';
@@ -192,6 +188,7 @@
                 }
                 return matches;
             };
+            
             const showPage = (pageId) => { pages.forEach(page => { page.classList.remove('active'); }); document.getElementById(pageId).classList.add('active'); navButtons.forEach(button => { if (button.dataset.page === pageId) { button.classList.add('active'); } else { button.classList.remove('active'); } }); };
             const loadDataFromFirestore = async () => { loadingOverlay.style.display = 'flex'; loadingOverlay.style.opacity = '1'; try { const querySnapshot = await getDocs(matchesCollection); historicalData = []; querySnapshot.forEach((doc) => { historicalData.push(doc.data()); }); } catch (error) { console.error("Errore nel caricamento dati da Firestore: ", error); alert("Impossibile caricare i dati dal database."); } finally { loadingOverlay.style.opacity = '0'; setTimeout(() => { loadingOverlay.style.display = 'none'; }, 300); } };
             const handleSaveData = async () => { if (parsedDataCache.length === 0) return; saveDataBtn.disabled = true; parserStatus.textContent = 'Controllo duplicati...'; const newEntries = parsedDataCache.filter(parsedBet => !historicalData.some(savedBet => savedBet.homeTeam === parsedBet.homeTeam && savedBet.awayTeam === parsedBet.awayTeam && savedBet.tip === parsedBet.tip && savedBet.league === parsedBet.league)); if (newEntries.length === 0) { parserStatus.textContent = `Nessuna nuova partita. (${parsedDataCache.length} erano già presenti).`; fileUpload.value = ''; saveDataBtn.disabled = true; return; } parserStatus.textContent = `Salvataggio di ${newEntries.length} nuove partite...`; try { const batch = writeBatch(db); newEntries.forEach(entry => { const newMatchRef = doc(matchesCollection); batch.set(newMatchRef, entry); }); await batch.commit(); await loadDataFromFirestore(); populateFilters(); applyFiltersAndRender(); const duplicateCount = parsedDataCache.length - newEntries.length; parserStatus.textContent = `${newEntries.length} nuove partite salvate! ${duplicateCount} duplicate ignorate.`; } catch (error) { console.error("Errore nel salvataggio su Firestore: ", error); parserStatus.textContent = 'Errore durante il salvataggio.'; } finally { fileUpload.value = ''; } };
