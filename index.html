@@ -26,6 +26,21 @@
             border-color: #3b82f6;
             font-weight: 600;
         }
+        .sortable-header {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .sortable-header:hover {
+            background-color: #e5e7eb;
+        }
+        .sort-icon {
+            opacity: 0.5;
+            transition: opacity 0.2s;
+        }
+        .sortable-header.active .sort-icon {
+            opacity: 1;
+            color: #3b82f6;
+        }
     </style>
 </head>
 <body class="h-full text-gray-800">
@@ -146,10 +161,8 @@
                                 <label class="block text-sm font-medium text-gray-700">Tips</label>
                                 <button id="reset-tips-btn" class="text-xs text-blue-600 hover:underline font-semibold">Azzera</button>
                             </div>
-                            <div id="tip-filters-container" class="w-full h-80 p-2 border rounded-lg custom-scrollbar overflow-y-auto bg-gray-50">
-                                <div class="flex flex-wrap gap-2">
-                                    <!-- Tip buttons will be injected here -->
-                                </div>
+                            <div id="tip-filters-container" class="w-full h-80 p-2 border rounded-lg custom-scrollbar overflow-y-auto bg-gray-50 space-y-2">
+                                <!-- Tip categories will be injected here -->
                             </div>
                         </div>
                     </div>
@@ -167,7 +180,24 @@
                 <!-- Match List -->
                 <div id="match-list-container" class="bg-white p-6 rounded-2xl shadow-md border border-gray-200">
                     <h3 class="text-xl font-bold mb-4">Partite filtrate (<span id="filtered-count">0</span>)</h3>
-                    <div id="match-list" class="space-y-2 max-h-[60vh] overflow-y-auto custom-scrollbar"></div>
+                    <div class="max-h-[60vh] overflow-y-auto custom-scrollbar">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-gray-100 text-xs uppercase sticky top-0">
+                                <tr>
+                                    <th class="p-3 font-semibold sortable-header" data-sort="data">Data <i class="fa-solid fa-sort sort-icon"></i></th>
+                                    <th class="p-3 font-semibold sortable-header" data-sort="lega">Lega <i class="fa-solid fa-sort sort-icon"></i></th>
+                                    <th class="p-3 font-semibold sortable-header" data-sort="partita">Partita <i class="fa-solid fa-sort sort-icon"></i></th>
+                                    <th class="p-3 font-semibold sortable-header" data-sort="mercato">Mercato <i class="fa-solid fa-sort sort-icon"></i></th>
+                                    <th class="p-3 font-semibold sortable-header" data-sort="tip">Tip <i class="fa-solid fa-sort sort-icon"></i></th>
+                                    <th class="p-3 font-semibold text-center">Ris.</th>
+                                    <th class="p-3 font-semibold sortable-header text-center" data-sort="probabilita">Prob. <i class="fa-solid fa-sort sort-icon"></i></th>
+                                    <th class="p-3 font-semibold sortable-header text-center" data-sort="quota">Quota <i class="fa-solid fa-sort sort-icon"></i></th>
+                                    <th class="p-3 font-semibold sortable-header text-center" data-sort="esito">Esito <i class="fa-solid fa-sort sort-icon"></i></th>
+                                </tr>
+                            </thead>
+                            <tbody id="match-list-body" class="divide-y"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </main>
@@ -203,6 +233,7 @@
         let allMatches = [];
         let dataToUpload = [];
         let filteredMatches = [];
+        let sortState = { column: 'data', direction: 'desc' };
 
         document.addEventListener('DOMContentLoaded', async () => {
             try {
@@ -235,6 +266,7 @@
             const resetLeaguesBtn = document.getElementById('reset-leagues-btn');
             const resetTipsBtn = document.getElementById('reset-tips-btn');
             const loadingOverlay = document.getElementById('loading-overlay');
+            const sortableHeaders = document.querySelectorAll('.sortable-header');
 
             // --- CORE FUNCTIONS ---
 
@@ -258,7 +290,6 @@
                 try {
                     const snapshot = await getDocs(matchesCollection);
                     allMatches = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    allMatches.sort((a, b) => new Date(b.data) - new Date(a.data));
                 } catch(e) {
                     console.error("Error loading matches: ", e);
                     showModal("Errore di Caricamento", "Impossibile caricare i dati dal database.", () => {});
@@ -284,10 +315,12 @@
                     if (m.quota < minOdds || m.quota > maxOdds) return false;
                     return true;
                 });
+                
+                sortAndRenderMatches();
                 renderStats(filteredMatches);
-                renderMatchList(filteredMatches);
             };
             
+            const continentMap = { 'AM': 'Sud America', 'SA': 'Sud America', 'NA': 'Nord America', 'AS': 'Asia', 'AF': 'Africa', 'OC': 'Oceania' };
             const categorizeLeague = (leagueName) => {
                 const mainEuropeCodes = ['IT-', 'DE-', 'GB-', 'ES-', 'FR-'];
                 if (leagueName.startsWith('EU-')) return 'Coppe Europee';
@@ -295,7 +328,7 @@
                 if (leagueName.endsWith('-NAZ')) return 'Nazionali';
                 if (leagueName.includes('Cup') || leagueName.includes('Coppa')) return 'Coppe Nazionali';
                 const continentMatch = leagueName.match(/^([A-Z]{2})-/);
-                if(continentMatch) return `Altri Campionati (${continentMatch[1]})`;
+                if(continentMatch && continentMap[continentMatch[1]]) return continentMap[continentMatch[1]];
                 return 'Altro';
             };
 
@@ -323,7 +356,7 @@
                     const leaguesInCategory = categorized[category].sort().map(league => `
                         <label class="flex items-center space-x-2 p-1 rounded hover:bg-blue-50 cursor-pointer">
                             <input type="checkbox" value="${league}" class="form-checkbox h-4 w-4 rounded text-blue-600 border-gray-300 focus:ring-blue-500">
-                            <span class="text-sm text-gray-700">${league}</span>
+                            <span class="text-sm text-gray-700 truncate" title="${league}">${league}</span>
                         </label>`).join('');
                     return `
                         <div>
@@ -336,11 +369,26 @@
                     cb.addEventListener('change', applyFiltersAndRender);
                 });
 
-                // Tips
-                const tips = [...new Set(allMatches.map(m => m.tip))].sort();
-                tipFiltersContainer.querySelector('.flex-wrap').innerHTML = tips.map(tip => `
-                    <button data-tip="${tip}" class="tip-button px-3 py-1 text-sm rounded-full border border-gray-300 bg-white hover:bg-gray-100 transition-colors">${tip}</button>
-                `).join('');
+                // Predefined Tips by Market
+                const predefinedTips = {
+                    '1X2': ['1', 'X', '2'],
+                    'Doppia Chance': ['1X', '12', 'X2'],
+                    'Under/Over': ['-1.5', '+1.5', '-2.5', '+2.5', '-3.5', '+3.5'],
+                    'Gol/No Gol': ['GOL', 'NO GOL']
+                };
+                
+                tipFiltersContainer.innerHTML = Object.entries(predefinedTips).map(([market, tips]) => {
+                    const tipButtons = tips.map(tip => `
+                        <button data-tip="${tip}" class="tip-button px-3 py-1 text-sm rounded-full border border-gray-300 bg-white hover:bg-gray-100 transition-colors">${tip}</button>
+                    `).join('');
+                    return `
+                        <div>
+                             <h4 class="font-semibold text-xs uppercase text-gray-500 py-1 px-1">${market}</h4>
+                             <div class="flex flex-wrap gap-2 p-1">${tipButtons}</div>
+                        </div>
+                    `;
+                }).join('');
+
 
                 tipFiltersContainer.querySelectorAll('.tip-button').forEach(btn => {
                     btn.addEventListener('click', () => {
@@ -351,8 +399,27 @@
             };
 
             const setupFilters = () => {
-                noUiSlider.create(probabilitySliderEl, { start: [0, 100], connect: true, range: { 'min': 0, 'max': 100 }, step: 1, format: { to: v => Math.round(v), from: v => Math.round(v) } });
-                noUiSlider.create(oddsSliderEl, { start: [1, 10], connect: true, range: { 'min': 1, 'max': 10 }, step: 0.01 });
+                // Sliders with dynamic range
+                const probs = allMatches.map(m => m.probabilita).filter(p => p);
+                const odds = allMatches.map(m => m.quota).filter(q => q);
+                const minProb = probs.length > 0 ? Math.min(...probs) : 0;
+                const maxProb = probs.length > 0 ? Math.max(...probs) : 100;
+                const minOdds = odds.length > 0 ? Math.floor(Math.min(...odds) * 10) / 10 : 1;
+                const maxOdds = odds.length > 0 ? Math.ceil(Math.max(...odds) * 10) / 10 : 10;
+
+                if (probabilitySliderEl.noUiSlider) probabilitySliderEl.noUiSlider.destroy();
+                noUiSlider.create(probabilitySliderEl, { 
+                    start: [minProb, maxProb], connect: true, 
+                    range: { 'min': minProb, 'max': maxProb }, step: 1, 
+                    format: { to: v => Math.round(v), from: v => Math.round(v) } 
+                });
+
+                if (oddsSliderEl.noUiSlider) oddsSliderEl.noUiSlider.destroy();
+                noUiSlider.create(oddsSliderEl, { 
+                    start: [minOdds, maxOdds], connect: true, 
+                    range: { 'min': minOdds, 'max': maxOdds }, step: 0.01 
+                });
+
                 probabilitySliderEl.noUiSlider.on('update', (v) => { document.getElementById('probability-value').innerText = `${v[0]}% - ${v[1]}%`; });
                 oddsSliderEl.noUiSlider.on('update', (v) => { document.getElementById('odds-value').innerText = `${parseFloat(v[0]).toFixed(2)} - ${parseFloat(v[1]).toFixed(2)}`; });
                 
@@ -374,8 +441,8 @@
                     filterDateEnd.value = '';
                     resetLeaguesBtn.click();
                     resetTipsBtn.click();
-                    probabilitySliderEl.noUiSlider.set([0, 100]);
-                    oddsSliderEl.noUiSlider.set([1, 10]);
+                    probabilitySliderEl.noUiSlider.set([minProb, maxProb]);
+                    oddsSliderEl.noUiSlider.set([minOdds, maxOdds]);
                     applyFiltersAndRender();
                 });
             };
@@ -396,7 +463,8 @@
             const processAndPreviewCSV = (parsedData, matchDate) => {
                 let potentialMatches = [], duplicates = 0, incomplete = 0;
                 const requiredFields = ['Lega', 'Partita', 'Risultato', 'Probabilità', 'Mercato', 'Tip', 'Quota'];
-                const existingMatchSignatures = new Set(allMatches.map(m => `${m.data}-${m.partita}-${m.tip}`));
+                // --- BUG FIX: Added 'lega' to the signature for robust duplicate checking ---
+                const existingMatchSignatures = new Set(allMatches.map(m => `${m.data}-${m.lega}-${m.partita}-${m.tip}`));
                 
                 for (const row of parsedData) {
                     if (!requiredFields.every(f => row[f] && String(row[f]).trim() !== '')) { incomplete++; continue; }
@@ -410,9 +478,10 @@
                         tip: String(row.Tip).trim(),
                         quota: parseFloat(String(row.Quota).replace(',', '.').trim()) || 0
                     };
-                    if (!matchData.lega) continue; // Skip rows with no lega
+                    if (!matchData.lega) continue;
                     matchData.esito = calculateOutcome(matchData);
-                    const signature = `${matchData.data}-${matchData.partita}-${matchData.tip}`;
+                    // --- BUG FIX: Using the new, more specific signature ---
+                    const signature = `${matchData.data}-${matchData.lega}-${matchData.partita}-${matchData.tip}`;
                     if (existingMatchSignatures.has(signature)) { duplicates++; } 
                     else { potentialMatches.push(matchData); existingMatchSignatures.add(signature); }
                 }
@@ -436,13 +505,15 @@
                     const matchesCollection = collection(db, "matches");
                     const batch = writeBatch(db);
                     dataToUpload.forEach(match => {
-                        const docId = `${match.data}_${match.partita}_${match.tip}`.replace(/[^a-zA-Z0-9-_]/g, '');
+                        // --- BUG FIX: Using the new, more specific signature for the document ID as well ---
+                        const docId = `${match.data}_${match.lega}_${match.partita}_${match.tip}`.replace(/[^a-zA-Z0-9-_]/g, '');
                         const docRef = doc(matchesCollection, docId);
                         batch.set(docRef, match);
                     });
                     try {
                         await batch.commit();
                         await loadAllMatches();
+                        setupFilters(); // Re-setup sliders with new ranges
                         populateFilters();
                         applyFiltersAndRender();
                         showModal("Successo", `${dataToUpload.length} partite caricate!`, () => {
@@ -464,6 +535,7 @@
                     snapshot.forEach(doc => batch.delete(doc.ref));
                     await batch.commit();
                     await loadAllMatches();
+                    setupFilters();
                     populateFilters();
                     applyFiltersAndRender();
                     showModal("Successo", `Cancellate ${snapshot.size} partite.`, () => {});
@@ -478,6 +550,7 @@
                     snapshot.forEach(doc => batch.delete(doc.ref));
                     await batch.commit();
                     await loadAllMatches();
+                    setupFilters();
                     populateFilters();
                     applyFiltersAndRender();
                     showModal("Successo", `Database azzerato. Cancellate ${snapshot.size} partite.`, () => {});
@@ -501,6 +574,17 @@
                 document.body.removeChild(link);
             };
 
+            const handleSort = (e) => {
+                const newColumn = e.currentTarget.dataset.sort;
+                if (sortState.column === newColumn) {
+                    sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    sortState.column = newColumn;
+                    sortState.direction = ['data', 'probabilita', 'quota'].includes(newColumn) ? 'desc' : 'asc';
+                }
+                sortAndRenderMatches();
+            };
+
             // --- INIT APP ---
             const yesterday = new Date();
             yesterday.setDate(yesterday.getDate() - 1);
@@ -513,12 +597,50 @@
             clearDbBtn.addEventListener('click', handleClearAllData);
             exportDbBtn.addEventListener('click', () => exportToCsv(allMatches, 'pronostici_bm_database.csv'));
             exportFilteredBtn.addEventListener('click', () => exportToCsv(filteredMatches, 'pronostici_bm_filtrati.csv'));
+            sortableHeaders.forEach(header => header.addEventListener('click', handleSort));
             
             await loadAllMatches();
             setupFilters();
             populateFilters();
             showPage('page-dashboard');
         });
+        
+        function sortAndRenderMatches() {
+            const { column, direction } = sortState;
+            const sorted = [...filteredMatches].sort((a, b) => {
+                const valA = a[column];
+                const valB = b[column];
+                let comparison = 0;
+                if (typeof valA === 'string') {
+                    comparison = valA.localeCompare(valB);
+                } else {
+                    comparison = valA - valB;
+                }
+                return direction === 'asc' ? comparison : -comparison;
+            });
+            renderMatchList(sorted);
+            updateSortIcons();
+        }
+
+        function updateSortIcons() {
+            document.querySelectorAll('.sortable-header').forEach(header => {
+                const icon = header.querySelector('.sort-icon');
+                if (header.dataset.sort === sortState.column) {
+                    header.classList.add('active');
+                    if (sortState.direction === 'asc') {
+                        icon.classList.remove('fa-sort', 'fa-sort-down');
+                        icon.classList.add('fa-sort-up');
+                    } else {
+                        icon.classList.remove('fa-sort', 'fa-sort-up');
+                        icon.classList.add('fa-sort-down');
+                    }
+                } else {
+                    header.classList.remove('active');
+                    icon.classList.remove('fa-sort-up', 'fa-sort-down');
+                    icon.classList.add('fa-sort');
+                }
+            });
+        }
 
         function calculateOutcome(match) {
             const { mercato, tip, risultato } = match;
@@ -527,27 +649,28 @@
             if (scores.length !== 2 || isNaN(scores[0]) || isNaN(scores[1])) return 'N/D';
             const [homeScore, awayScore] = scores;
             const totalGoals = homeScore + awayScore;
+            const normalizedTip = tip.toUpperCase().replace(/\s/g, '');
+
             try {
                 switch (mercato.toLowerCase().trim()) {
                     case '1x2':
-                        if (tip === '1' && homeScore > awayScore) return 'Vinto';
-                        if (tip.toLowerCase() === 'x' && homeScore === awayScore) return 'Vinto';
-                        if (tip === '2' && homeScore < awayScore) return 'Vinto';
+                        if (normalizedTip === '1' && homeScore > awayScore) return 'Vinto';
+                        if (normalizedTip === 'X' && homeScore === awayScore) return 'Vinto';
+                        if (normalizedTip === '2' && homeScore < awayScore) return 'Vinto';
                         return 'Perso';
                     case 'doppia chance':
-                        if (tip === '1X' && homeScore >= awayScore) return 'Vinto';
-                        if (tip === 'X2' && homeScore <= awayScore) return 'Vinto';
-                        if (tip === '12' && homeScore !== awayScore) return 'Vinto';
+                        if (normalizedTip === '1X' && homeScore >= awayScore) return 'Vinto';
+                        if (normalizedTip === 'X2' && homeScore <= awayScore) return 'Vinto';
+                        if (normalizedTip === '12' && homeScore !== awayScore) return 'Vinto';
                         return 'Perso';
                     case 'numero di gol':
-                        const goalValue = parseFloat(tip.replace(/[+-]/, '').trim());
-                        if (tip.startsWith('+') && totalGoals > goalValue) return 'Vinto';
-                        if (tip.startsWith('-') && totalGoals < goalValue) return 'Vinto';
+                        const goalValue = parseFloat(normalizedTip.replace(/[+-]/, '').trim());
+                        if (normalizedTip.startsWith('+') && totalGoals > goalValue) return 'Vinto';
+                        if (normalizedTip.startsWith('-') && totalGoals < goalValue) return 'Vinto';
                         return 'Perso';
                     case 'gol/no gol':
-                        const lowerTipGG = tip.toLowerCase().replace(/\s/g, '');
-                        if ((lowerTipGG === 'gol' || lowerTipGG === 'gg') && (homeScore > 0 && awayScore > 0)) return 'Vinto';
-                        if ((lowerTipGG === 'nogol' || lowerTipGG === 'ng') && (homeScore === 0 || awayScore === 0)) return 'Vinto';
+                        if ((normalizedTip === 'GOL' || normalizedTip === 'GG' || normalizedTip === 'SI') && (homeScore > 0 && awayScore > 0)) return 'Vinto';
+                        if ((normalizedTip === 'NOGOL' || normalizedTip === 'NG' || normalizedTip === 'NO') && (homeScore === 0 || awayScore === 0)) return 'Vinto';
                         return 'Perso';
                     default: return 'N/D';
                 }
@@ -570,24 +693,26 @@
         }
 
         function renderMatchList(matches) {
-            const container = document.getElementById('match-list');
+            const container = document.getElementById('match-list-body');
             document.getElementById('filtered-count').textContent = matches.length;
             if (matches.length === 0) {
-                container.innerHTML = '<p class="text-center text-gray-500">Nessuna partita trovata.</p>';
+                container.innerHTML = '<tr><td colspan="9" class="text-center text-gray-500 p-4">Nessuna partita trovata.</td></tr>';
                 return;
             }
             container.innerHTML = matches.map(m => `
-                <div class="grid grid-cols-12 gap-2 items-center p-2 rounded-lg ${m.esito === 'Vinto' ? 'bg-green-50' : m.esito === 'Perso' ? 'bg-red-50' : 'bg-gray-50'}">
-                    <div class="col-span-1 text-xs text-gray-500">${new Date(m.data + 'T00:00:00').toLocaleDateString('it-IT')}</div>
-                    <div class="col-span-3 font-semibold">${m.partita}</div>
-                    <div class="col-span-3 text-sm text-gray-600">${m.mercato}: <strong>${m.tip}</strong></div>
-                    <div class="col-span-1 text-center font-bold">${m.risultato}</div>
-                    <div class="col-span-1 text-center text-sm">${m.probabilita}%</div>
-                    <div class="col-span-1 text-center text-sm">${m.quota.toFixed(2)}</div>
-                    <div class="col-span-2 text-right">
+                <tr class="hover:bg-gray-50">
+                    <td class="p-3 text-xs text-gray-600">${new Date(m.data + 'T00:00:00').toLocaleDateString('it-IT')}</td>
+                    <td class="p-3 text-sm text-gray-600 truncate" title="${m.lega}">${m.lega}</td>
+                    <td class="p-3 font-semibold truncate" title="${m.partita}">${m.partita}</td>
+                    <td class="p-3 text-sm text-gray-600">${m.mercato}</td>
+                    <td class="p-3 text-sm font-bold">${m.tip}</td>
+                    <td class="p-3 text-center font-bold">${m.risultato}</td>
+                    <td class="p-3 text-center text-sm">${m.probabilita}%</td>
+                    <td class="p-3 text-center text-sm">${m.quota.toFixed(2)}</td>
+                    <td class="p-3 text-center">
                         <span class="px-3 py-1 text-xs font-bold rounded-full ${m.esito === 'Vinto' ? 'bg-green-500 text-white' : m.esito === 'Perso' ? 'bg-red-500 text-white' : 'bg-gray-500 text-white'}">${m.esito}</span>
-                    </div>
-                </div>`).join('');
+                    </td>
+                </tr>`).join('');
         }
         
         function showModal(title, body, onConfirm, isConfirmation = false) {
@@ -613,3 +738,4 @@
     </script>
 </body>
 </html>
+
