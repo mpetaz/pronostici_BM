@@ -20,6 +20,12 @@
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        .tip-button.active {
+            background-color: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body class="h-full text-gray-800">
@@ -70,7 +76,7 @@
                         </div>
                     </div>
 
-                    <!-- Delete Section -->
+                    <!-- Actions Section -->
                     <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-200">
                         <h2 class="text-2xl font-bold mb-4 text-red-600 border-b border-red-200 pb-2">Zona Pericolo 🤣</h2>
                         <div class="space-y-6">
@@ -103,29 +109,17 @@
             <div id="page-dashboard" class="page max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <!-- Filters -->
                 <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-200 mb-8">
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        <!-- Date Filters -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Periodo</label>
-                            <div class="flex flex-col space-y-2">
-                                <input type="date" id="filter-date-start" class="w-full p-2 border rounded-lg">
-                                <input type="date" id="filter-date-end" class="w-full p-2 border rounded-lg">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Column 1: Date & Sliders -->
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Periodo</label>
+                                <div class="flex flex-col space-y-2">
+                                    <input type="date" id="filter-date-start" class="w-full p-2 border rounded-lg">
+                                    <input type="date" id="filter-date-end" class="w-full p-2 border rounded-lg">
+                                </div>
                             </div>
-                        </div>
-                        <!-- League & Tip Filters -->
-                        <div>
-                            <label for="filter-leagues" class="block text-sm font-medium text-gray-700 mb-1">Leghe</label>
-                            <select id="filter-leagues" multiple class="w-full h-24 p-2 border rounded-lg custom-scrollbar"></select>
-                            <p class="text-xs text-gray-500 mt-1">Tieni premuto Ctrl (o Cmd) per selezionare più voci.</p>
-                        </div>
-                         <div>
-                            <label for="filter-tips" class="block text-sm font-medium text-gray-700 mb-1">Tips</label>
-                            <select id="filter-tips" multiple class="w-full h-24 p-2 border rounded-lg custom-scrollbar"></select>
-                            <p class="text-xs text-gray-500 mt-1">Tieni premuto Ctrl (o Cmd) per selezionare più voci.</p>
-                        </div>
-                        <!-- Sliders -->
-                        <div>
-                            <div class="mb-4">
+                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Probabilità (%)</label>
                                 <div id="probability-slider" class="mt-4"></div>
                                 <div id="probability-value" class="text-sm text-center mt-1"></div>
@@ -136,13 +130,35 @@
                                 <div id="odds-value" class="text-sm text-center mt-1"></div>
                             </div>
                         </div>
+                        <!-- Column 2: Leagues -->
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="block text-sm font-medium text-gray-700">Leghe</label>
+                                <button id="reset-leagues-btn" class="text-xs text-blue-600 hover:underline font-semibold">Azzera</button>
+                            </div>
+                            <div id="league-filters-container" class="w-full h-80 p-2 border rounded-lg custom-scrollbar overflow-y-auto bg-gray-50 space-y-2">
+                                <!-- League categories will be injected here -->
+                            </div>
+                        </div>
+                        <!-- Column 3: Tips -->
+                         <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="block text-sm font-medium text-gray-700">Tips</label>
+                                <button id="reset-tips-btn" class="text-xs text-blue-600 hover:underline font-semibold">Azzera</button>
+                            </div>
+                            <div id="tip-filters-container" class="w-full h-80 p-2 border rounded-lg custom-scrollbar overflow-y-auto bg-gray-50">
+                                <div class="flex flex-wrap gap-2">
+                                    <!-- Tip buttons will be injected here -->
+                                </div>
+                            </div>
+                        </div>
                     </div>
                      <div class="mt-6 flex justify-end space-x-4">
                         <button id="export-filtered-btn" class="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors">
                             <i class="fa-solid fa-file-csv mr-2"></i>Esporta Filtrati
                         </button>
                         <button id="reset-filters-btn" class="bg-gray-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-600 transition-colors">
-                            <i class="fa-solid fa-arrows-rotate mr-2"></i>Reset Filtri
+                            <i class="fa-solid fa-arrows-rotate mr-2"></i>Reset Tutti i Filtri
                         </button>
                     </div>
                 </div>
@@ -192,14 +208,13 @@
             try {
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
-                console.log("Firebase initialized successfully.");
             } catch (error) {
                 console.error("Firebase Initialization Error:", error);
                 document.body.innerHTML = `<div class="p-4 bg-red-100 text-red-800">Errore critico durante l'inizializzazione di Firebase.</div>`;
                 return;
             }
             
-            // UI elements
+            // --- UI elements ---
             const pages = document.querySelectorAll('.page');
             const navButtons = document.querySelectorAll('.nav-button');
             const matchDateInput = document.getElementById('match-date');
@@ -212,11 +227,13 @@
             const exportFilteredBtn = document.getElementById('export-filtered-btn');
             const filterDateStart = document.getElementById('filter-date-start');
             const filterDateEnd = document.getElementById('filter-date-end');
-            const filterLeagues = document.getElementById('filter-leagues');
-            const filterTips = document.getElementById('filter-tips');
+            const leagueFiltersContainer = document.getElementById('league-filters-container');
+            const tipFiltersContainer = document.getElementById('tip-filters-container');
             const probabilitySliderEl = document.getElementById('probability-slider');
             const oddsSliderEl = document.getElementById('odds-slider');
             const resetFiltersBtn = document.getElementById('reset-filters-btn');
+            const resetLeaguesBtn = document.getElementById('reset-leagues-btn');
+            const resetTipsBtn = document.getElementById('reset-tips-btn');
             const loadingOverlay = document.getElementById('loading-overlay');
 
             // --- CORE FUNCTIONS ---
@@ -225,13 +242,10 @@
                 pages.forEach(page => page.classList.remove('active'));
                 document.getElementById(pageId).classList.add('active');
                 navButtons.forEach(btn => {
-                    if (btn.dataset.page === pageId) {
-                        btn.classList.add('bg-blue-600', 'text-white');
-                        btn.classList.remove('bg-gray-200', 'text-gray-700');
-                    } else {
-                        btn.classList.remove('bg-blue-600', 'text-white');
-                        btn.classList.add('bg-gray-200', 'text-gray-700');
-                    }
+                    btn.classList.toggle('bg-blue-600', btn.dataset.page === pageId);
+                    btn.classList.toggle('text-white', btn.dataset.page === pageId);
+                    btn.classList.toggle('bg-gray-200', btn.dataset.page !== pageId);
+                    btn.classList.toggle('text-gray-700', btn.dataset.page !== pageId);
                 });
                 if (pageId === 'page-dashboard') {
                     applyFiltersAndRender();
@@ -245,7 +259,6 @@
                     const snapshot = await getDocs(matchesCollection);
                     allMatches = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     allMatches.sort((a, b) => new Date(b.data) - new Date(a.data));
-                    console.log(`Loaded ${allMatches.length} matches.`);
                 } catch(e) {
                     console.error("Error loading matches: ", e);
                     showModal("Errore di Caricamento", "Impossibile caricare i dati dal database.", () => {});
@@ -257,8 +270,8 @@
             const applyFiltersAndRender = () => {
                 const startDate = filterDateStart.value;
                 const endDate = filterDateEnd.value;
-                const selectedLeagues = Array.from(filterLeagues.selectedOptions).map(o => o.value);
-                const selectedTips = Array.from(filterTips.selectedOptions).map(o => o.value);
+                const selectedLeagues = Array.from(leagueFiltersContainer.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+                const selectedTips = Array.from(tipFiltersContainer.querySelectorAll('.tip-button.active')).map(btn => btn.dataset.tip);
                 const [minProb, maxProb] = probabilitySliderEl.noUiSlider.get();
                 const [minOdds, maxOdds] = oddsSliderEl.noUiSlider.get();
 
@@ -274,14 +287,67 @@
                 renderStats(filteredMatches);
                 renderMatchList(filteredMatches);
             };
+            
+            const categorizeLeague = (leagueName) => {
+                const mainEuropeCodes = ['IT-', 'DE-', 'GB-', 'ES-', 'FR-'];
+                if (leagueName.startsWith('EU-')) return 'Coppe Europee';
+                if (mainEuropeCodes.some(code => leagueName.startsWith(code))) return 'Principali Europei';
+                if (leagueName.endsWith('-NAZ')) return 'Nazionali';
+                if (leagueName.includes('Cup') || leagueName.includes('Coppa')) return 'Coppe Nazionali';
+                const continentMatch = leagueName.match(/^([A-Z]{2})-/);
+                if(continentMatch) return `Altri Campionati (${continentMatch[1]})`;
+                return 'Altro';
+            };
 
             const populateFilters = () => {
-                const leagues = [...new Set(allMatches.map(m => m.lega))].sort();
+                // Leagues
+                const leagues = [...new Set(allMatches.map(m => m.lega))];
+                const categorized = leagues.reduce((acc, league) => {
+                    const category = categorizeLeague(league);
+                    if (!acc[category]) acc[category] = [];
+                    acc[category].push(league);
+                    return acc;
+                }, {});
+
+                const categoryOrder = ['Principali Europei', 'Coppe Europee', 'Coppe Nazionali', 'Nazionali'];
+                const sortedCategories = Object.keys(categorized).sort((a, b) => {
+                    const indexA = categoryOrder.indexOf(a);
+                    const indexB = categoryOrder.indexOf(b);
+                    if (indexA > -1 && indexB > -1) return indexA - indexB;
+                    if (indexA > -1) return -1;
+                    if (indexB > -1) return 1;
+                    return a.localeCompare(b);
+                });
+
+                leagueFiltersContainer.innerHTML = sortedCategories.map(category => {
+                    const leaguesInCategory = categorized[category].sort().map(league => `
+                        <label class="flex items-center space-x-2 p-1 rounded hover:bg-blue-50 cursor-pointer">
+                            <input type="checkbox" value="${league}" class="form-checkbox h-4 w-4 rounded text-blue-600 border-gray-300 focus:ring-blue-500">
+                            <span class="text-sm text-gray-700">${league}</span>
+                        </label>`).join('');
+                    return `
+                        <div>
+                            <h4 class="font-semibold text-xs uppercase text-gray-500 sticky top-0 bg-gray-50 py-1 px-1">${category}</h4>
+                            <div class="pl-2 space-y-1">${leaguesInCategory}</div>
+                        </div>`;
+                }).join('');
+                
+                leagueFiltersContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                    cb.addEventListener('change', applyFiltersAndRender);
+                });
+
+                // Tips
                 const tips = [...new Set(allMatches.map(m => m.tip))].sort();
-                const currentLeagues = Array.from(filterLeagues.selectedOptions).map(o => o.value);
-                const currentTips = Array.from(filterTips.selectedOptions).map(o => o.value);
-                filterLeagues.innerHTML = leagues.map(l => `<option value="${l}" ${currentLeagues.includes(l) ? 'selected' : ''}>${l}</option>`).join('');
-                filterTips.innerHTML = tips.map(t => `<option value="${t}" ${currentTips.includes(t) ? 'selected' : ''}>${t}</option>`).join('');
+                tipFiltersContainer.querySelector('.flex-wrap').innerHTML = tips.map(tip => `
+                    <button data-tip="${tip}" class="tip-button px-3 py-1 text-sm rounded-full border border-gray-300 bg-white hover:bg-gray-100 transition-colors">${tip}</button>
+                `).join('');
+
+                tipFiltersContainer.querySelectorAll('.tip-button').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        btn.classList.toggle('active');
+                        applyFiltersAndRender();
+                    });
+                });
             };
 
             const setupFilters = () => {
@@ -289,14 +355,25 @@
                 noUiSlider.create(oddsSliderEl, { start: [1, 10], connect: true, range: { 'min': 1, 'max': 10 }, step: 0.01 });
                 probabilitySliderEl.noUiSlider.on('update', (v) => { document.getElementById('probability-value').innerText = `${v[0]}% - ${v[1]}%`; });
                 oddsSliderEl.noUiSlider.on('update', (v) => { document.getElementById('odds-value').innerText = `${parseFloat(v[0]).toFixed(2)} - ${parseFloat(v[1]).toFixed(2)}`; });
-                [filterDateStart, filterDateEnd, filterLeagues, filterTips].forEach(el => el.addEventListener('change', applyFiltersAndRender));
+                
+                [filterDateStart, filterDateEnd].forEach(el => el.addEventListener('change', applyFiltersAndRender));
                 probabilitySliderEl.noUiSlider.on('set', applyFiltersAndRender); 
                 oddsSliderEl.noUiSlider.on('set', applyFiltersAndRender);
+                
+                resetLeaguesBtn.addEventListener('click', () => {
+                     leagueFiltersContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+                     applyFiltersAndRender();
+                });
+                 resetTipsBtn.addEventListener('click', () => {
+                     tipFiltersContainer.querySelectorAll('.tip-button').forEach(btn => btn.classList.remove('active'));
+                     applyFiltersAndRender();
+                });
+
                 resetFiltersBtn.addEventListener('click', () => {
                     filterDateStart.value = '';
                     filterDateEnd.value = '';
-                    Array.from(filterLeagues.options).forEach(o => o.selected = false);
-                    Array.from(filterTips.options).forEach(o => o.selected = false);
+                    resetLeaguesBtn.click();
+                    resetTipsBtn.click();
                     probabilitySliderEl.noUiSlider.set([0, 100]);
                     oddsSliderEl.noUiSlider.set([1, 10]);
                     applyFiltersAndRender();
@@ -333,6 +410,7 @@
                         tip: String(row.Tip).trim(),
                         quota: parseFloat(String(row.Quota).replace(',', '.').trim()) || 0
                     };
+                    if (!matchData.lega) continue; // Skip rows with no lega
                     matchData.esito = calculateOutcome(matchData);
                     const signature = `${matchData.data}-${matchData.partita}-${matchData.tip}`;
                     if (existingMatchSignatures.has(signature)) { duplicates++; } 
@@ -344,7 +422,7 @@
                     <p><strong>Riepilogo:</strong></p>
                     <ul class="list-disc list-inside text-sm mt-2">
                         <li>Partite totali: ${parsedData.length}</li>
-                        <li>Scartate (incomplete): ${incomplete}</li>
+                        <li>Scartate (incomplete/senza lega): ${incomplete}</li>
                         <li>Scartate (duplicate): ${duplicates}</li>
                         <li class="font-bold text-blue-600">Da caricare: ${dataToUpload.length}</li>
                     </ul>
@@ -412,8 +490,8 @@
                     return;
                 }
                 const headers = ['data', 'lega', 'partita', 'risultato', 'probabilita', 'mercato', 'tip', 'quota', 'esito'];
-                const csv = Papa.unparse(data, { columns: headers });
-                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const csv = Papa.unparse(data.map(d => ({...d, quota: String(d.quota).replace('.',',')})), { columns: headers });
+                const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
                 const link = document.createElement("a");
                 const url = URL.createObjectURL(blob);
                 link.setAttribute("href", url);
@@ -535,4 +613,3 @@
     </script>
 </body>
 </html>
-
