@@ -301,7 +301,7 @@
             const applyFiltersAndRender = () => {
                 const startDate = filterDateStart.value;
                 const endDate = filterDateEnd.value;
-                const selectedLeagues = Array.from(leagueFiltersContainer.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+                const selectedLeagues = Array.from(leagueFiltersContainer.querySelectorAll('input.league-checkbox:checked')).map(cb => cb.value);
                 const selectedTips = Array.from(tipFiltersContainer.querySelectorAll('.tip-button.active')).map(btn => btn.dataset.tip);
                 const [minProb, maxProb] = probabilitySliderEl.noUiSlider.get();
                 const [minOdds, maxOdds] = oddsSliderEl.noUiSlider.get();
@@ -355,18 +355,34 @@
                 leagueFiltersContainer.innerHTML = sortedCategories.map(category => {
                     const leaguesInCategory = categorized[category].sort().map(league => `
                         <label class="flex items-center space-x-2 p-1 rounded hover:bg-blue-50 cursor-pointer">
-                            <input type="checkbox" value="${league}" class="form-checkbox h-4 w-4 rounded text-blue-600 border-gray-300 focus:ring-blue-500">
+                            <input type="checkbox" value="${league}" class="league-checkbox form-checkbox h-4 w-4 rounded text-blue-600 border-gray-300 focus:ring-blue-500">
                             <span class="text-sm text-gray-700 truncate" title="${league}">${league}</span>
                         </label>`).join('');
                     return `
-                        <div>
-                            <h4 class="font-semibold text-xs uppercase text-gray-500 sticky top-0 bg-gray-50 py-1 px-1">${category}</h4>
+                        <div class="league-category">
+                            <h4 class="font-semibold text-xs uppercase text-gray-500 sticky top-0 bg-gray-50 py-1 px-1">
+                               <label class="flex items-center space-x-2 cursor-pointer">
+                                    <input type="checkbox" class="category-select-all form-checkbox h-4 w-4 rounded text-blue-600 border-gray-300 focus:ring-blue-500">
+                                    <span>${category}</span>
+                                </label>
+                            </h4>
                             <div class="pl-2 space-y-1">${leaguesInCategory}</div>
                         </div>`;
                 }).join('');
                 
-                leagueFiltersContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                leagueFiltersContainer.querySelectorAll('.league-checkbox').forEach(cb => {
                     cb.addEventListener('change', applyFiltersAndRender);
+                });
+
+                leagueFiltersContainer.querySelectorAll('.category-select-all').forEach(masterCb => {
+                    masterCb.addEventListener('change', (e) => {
+                        const isChecked = e.target.checked;
+                        const categoryDiv = e.target.closest('.league-category');
+                        categoryDiv.querySelectorAll('.league-checkbox').forEach(leagueCb => {
+                            leagueCb.checked = isChecked;
+                        });
+                        applyFiltersAndRender();
+                    });
                 });
 
                 // Predefined Tips by Market
@@ -463,7 +479,6 @@
             const processAndPreviewCSV = (parsedData, matchDate) => {
                 let potentialMatches = [], duplicates = 0, incomplete = 0;
                 const requiredFields = ['Lega', 'Partita', 'Risultato', 'Probabilità', 'Mercato', 'Tip', 'Quota'];
-                // --- BUG FIX: Added 'lega' to the signature for robust duplicate checking ---
                 const existingMatchSignatures = new Set(allMatches.map(m => `${m.data}-${m.lega}-${m.partita}-${m.tip}`));
                 
                 for (const row of parsedData) {
@@ -480,7 +495,6 @@
                     };
                     if (!matchData.lega) continue;
                     matchData.esito = calculateOutcome(matchData);
-                    // --- BUG FIX: Using the new, more specific signature ---
                     const signature = `${matchData.data}-${matchData.lega}-${matchData.partita}-${matchData.tip}`;
                     if (existingMatchSignatures.has(signature)) { duplicates++; } 
                     else { potentialMatches.push(matchData); existingMatchSignatures.add(signature); }
@@ -505,7 +519,6 @@
                     const matchesCollection = collection(db, "matches");
                     const batch = writeBatch(db);
                     dataToUpload.forEach(match => {
-                        // --- BUG FIX: Using the new, more specific signature for the document ID as well ---
                         const docId = `${match.data}_${match.lega}_${match.partita}_${match.tip}`.replace(/[^a-zA-Z0-9-_]/g, '');
                         const docRef = doc(matchesCollection, docId);
                         batch.set(docRef, match);
@@ -738,4 +751,3 @@
     </script>
 </body>
 </html>
-
