@@ -55,7 +55,7 @@
                         <h3 class="text-lg font-semibold mb-3">Carica Nuove Partite</h3>
                         <div class="flex flex-col sm:flex-row gap-4 items-end">
                             <div><label for="match-date" class="block text-sm font-semibold mb-2">1. Data da Assegnare</label><input type="date" id="match-date" class="w-full"></div>
-                            <div class="flex-grow"><label for="file-upload" class="block text-sm font-semibold mb-2">2. File CSV (9 Colonne)</label><input id="file-upload" type="file" class="custom-file-input w-full" accept=".csv"></div>
+                            <div class="flex-grow"><label for="file-upload" class="block text-sm font-semibold mb-2">2. File CSV</label><input id="file-upload" type="file" class="custom-file-input w-full" accept=".csv"></div>
                         </div>
                         <div class="flex flex-col sm:flex-row gap-3 items-center mt-4">
                             <button id="save-data-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-lg shadow-lg hover:shadow-xl disabled:bg-gray-300 disabled:shadow-none disabled:text-gray-500 w-full sm:w-auto" disabled>Salva Dati</button>
@@ -148,6 +148,7 @@
             const app = initializeApp(firebaseConfig);
             const db = getFirestore(app);
             const matchesCollection = collection(db, "matches");
+
             let historicalData = [], parsedDataCache = [], oddsSlider, probSlider, selectedLeagues = [], selectedTips = [];
             const allMarketTips = { "1X2": ["1", "X", "2"],"Doppia chance": ["1X", "X2", "12"],"Gol/No Gol": ["Gol", "No Gol"],"Numero di gol": ["-0.5", "+0.5", "-1.5", "+1.5", "-2.5", "+2.5", "-3.5", "+3.5", "-4.5", "+4.5"] };
             const fileUpload = document.getElementById('file-upload'), matchDateInput = document.getElementById('match-date'), parserStatus = document.getElementById('parser-status'), saveDataBtn = document.getElementById('save-data-btn'), clearDataBtn = document.getElementById('clear-data-btn'), filterDateStart = document.getElementById('filter-date-start'), filterDateEnd = document.getElementById('filter-date-end'), resetFiltersBtn = document.getElementById('reset-filters-btn'), statsContainer = document.getElementById('stats-summary-container'), filteredMatchesBody = document.getElementById('filtered-matches-body'), filteredCount = document.getElementById('filtered-count'), loadingOverlay = document.getElementById('loading-overlay'), deleteDateInput = document.getElementById('delete-date'), deleteByDateBtn = document.getElementById('delete-by-date-btn'), exportDataBtn = document.getElementById('export-data-btn'), oddsRangeValues = document.getElementById('odds-range-values'), oddsSliderElement = document.getElementById('filter-odds-slider'), probRangeValues = document.getElementById('prob-range-values'), probSliderElement = document.getElementById('filter-probability-slider'), tipFilterContainer = document.getElementById('tip-filter-container'), tipFilterCount = document.getElementById('tip-filter-count'), leagueFilterContainer = document.getElementById('league-filter-container'), leagueFilterCount = document.getElementById('league-filter-count'), pages = document.querySelectorAll('.page'), navButtons = document.querySelectorAll('.nav-button');
