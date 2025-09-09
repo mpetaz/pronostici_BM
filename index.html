@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pronostici V2</title>
+    <title>Pronostici BM</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -33,7 +33,7 @@
                 <div class="flex justify-between items-center py-4">
                     <div class="flex items-center space-x-3">
                         <i class="fa-solid fa-chart-line text-2xl text-blue-600"></i>
-                        <h1 class="text-xl font-bold text-gray-900">Pronostici V2</h1>
+                        <h1 class="text-xl font-bold text-gray-900">Pronostici BM</h1>
                     </div>
                     <nav class="flex space-x-2 sm:space-x-4">
                         <button data-page="page-dashboard" class="nav-button bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold shadow-sm hover:bg-blue-700 transition-colors">
@@ -72,14 +72,20 @@
 
                     <!-- Delete Section -->
                     <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-200">
-                        <h2 class="text-2xl font-bold mb-4 text-red-600 border-b border-red-200 pb-2">Zona Pericolo</h2>
+                        <h2 class="text-2xl font-bold mb-4 text-red-600 border-b border-red-200 pb-2">Zona Pericolo 🤣</h2>
                         <div class="space-y-6">
                             <div>
                                 <label for="delete-date" class="block text-sm font-medium text-gray-700 mb-1">Cancella per data</label>
                                 <div class="flex space-x-2">
                                     <input type="date" id="delete-date" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm">
-                                    <button id="delete-by-date-btn" class="bg-yellow-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-yellow-600 transition-colors">Cancella</button>
+                                    <button id="delete-by-date-btn" class="bg-yellow-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-yellow-600 transition-colors flex-shrink-0">Cancella</button>
                                 </div>
+                            </div>
+                            <div class="border-t pt-6">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Esporta Database Completo</label>
+                                <button id="export-db-btn" class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors">
+                                    <i class="fa-solid fa-download mr-2"></i>Download CSV Completo
+                                </button>
                             </div>
                             <div class="border-t pt-6">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Azzera l'intero database</label>
@@ -110,10 +116,12 @@
                         <div>
                             <label for="filter-leagues" class="block text-sm font-medium text-gray-700 mb-1">Leghe</label>
                             <select id="filter-leagues" multiple class="w-full h-24 p-2 border rounded-lg custom-scrollbar"></select>
+                            <p class="text-xs text-gray-500 mt-1">Tieni premuto Ctrl (o Cmd) per selezionare più voci.</p>
                         </div>
                          <div>
                             <label for="filter-tips" class="block text-sm font-medium text-gray-700 mb-1">Tips</label>
                             <select id="filter-tips" multiple class="w-full h-24 p-2 border rounded-lg custom-scrollbar"></select>
+                            <p class="text-xs text-gray-500 mt-1">Tieni premuto Ctrl (o Cmd) per selezionare più voci.</p>
                         </div>
                         <!-- Sliders -->
                         <div>
@@ -129,7 +137,10 @@
                             </div>
                         </div>
                     </div>
-                     <div class="mt-6 flex justify-end">
+                     <div class="mt-6 flex justify-end space-x-4">
+                        <button id="export-filtered-btn" class="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors">
+                            <i class="fa-solid fa-file-csv mr-2"></i>Esporta Filtrati
+                        </button>
                         <button id="reset-filters-btn" class="bg-gray-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-600 transition-colors">
                             <i class="fa-solid fa-arrows-rotate mr-2"></i>Reset Filtri
                         </button>
@@ -161,10 +172,8 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
-        // REMOVED ALL AUTH IMPORTS
         import { getFirestore, collection, getDocs, writeBatch, query, where, doc } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
         
-        // CORRECTED API KEY from user's working file
         const firebaseConfig = {
             apiKey: "AIzaSyCWay4QfY1bxj4yBLnho3Zn02_NaxzbVRQ",
             authDomain: "betmines-pronostici.firebaseapp.com",
@@ -177,6 +186,7 @@
         let db;
         let allMatches = [];
         let dataToUpload = [];
+        let filteredMatches = [];
 
         document.addEventListener('DOMContentLoaded', async () => {
             try {
@@ -198,6 +208,8 @@
             const deleteByDateBtn = document.getElementById('delete-by-date-btn');
             const deleteDateInput = document.getElementById('delete-date');
             const clearDbBtn = document.getElementById('clear-db-btn');
+            const exportDbBtn = document.getElementById('export-db-btn');
+            const exportFilteredBtn = document.getElementById('export-filtered-btn');
             const filterDateStart = document.getElementById('filter-date-start');
             const filterDateEnd = document.getElementById('filter-date-end');
             const filterLeagues = document.getElementById('filter-leagues');
@@ -206,6 +218,8 @@
             const oddsSliderEl = document.getElementById('odds-slider');
             const resetFiltersBtn = document.getElementById('reset-filters-btn');
             const loadingOverlay = document.getElementById('loading-overlay');
+
+            // --- CORE FUNCTIONS ---
 
             const showPage = (pageId) => {
                 pages.forEach(page => page.classList.remove('active'));
@@ -220,14 +234,12 @@
                     }
                 });
                 if (pageId === 'page-dashboard') {
-                    populateFilters();
                     applyFiltersAndRender();
                 }
             };
 
             const loadAllMatches = async () => {
                 loadingOverlay.style.display = 'flex';
-                // Using "matches" collection name from user's working file
                 const matchesCollection = collection(db, "matches");
                 try {
                     const snapshot = await getDocs(matchesCollection);
@@ -241,7 +253,7 @@
                     loadingOverlay.style.display = 'none';
                 }
             };
-
+            
             const applyFiltersAndRender = () => {
                 const startDate = filterDateStart.value;
                 const endDate = filterDateEnd.value;
@@ -250,7 +262,7 @@
                 const [minProb, maxProb] = probabilitySliderEl.noUiSlider.get();
                 const [minOdds, maxOdds] = oddsSliderEl.noUiSlider.get();
 
-                const filteredMatches = allMatches.filter(m => {
+                filteredMatches = allMatches.filter(m => {
                     if (startDate && m.data < startDate) return false;
                     if (endDate && m.data > endDate) return false;
                     if (selectedLeagues.length > 0 && !selectedLeagues.includes(m.lega)) return false;
@@ -266,8 +278,10 @@
             const populateFilters = () => {
                 const leagues = [...new Set(allMatches.map(m => m.lega))].sort();
                 const tips = [...new Set(allMatches.map(m => m.tip))].sort();
-                filterLeagues.innerHTML = leagues.map(l => `<option value="${l}">${l}</option>`).join('');
-                filterTips.innerHTML = tips.map(t => `<option value="${t}">${t}</option>`).join('');
+                const currentLeagues = Array.from(filterLeagues.selectedOptions).map(o => o.value);
+                const currentTips = Array.from(filterTips.selectedOptions).map(o => o.value);
+                filterLeagues.innerHTML = leagues.map(l => `<option value="${l}" ${currentLeagues.includes(l) ? 'selected' : ''}>${l}</option>`).join('');
+                filterTips.innerHTML = tips.map(t => `<option value="${t}" ${currentTips.includes(t) ? 'selected' : ''}>${t}</option>`).join('');
             };
 
             const setupFilters = () => {
@@ -288,19 +302,143 @@
                     applyFiltersAndRender();
                 });
             };
+            
+            const handleFileUpload = (event) => {
+                const file = event.target.files[0];
+                if (!file || !matchDateInput.value) {
+                    showModal("Errore", "Seleziona sia una data che un file CSV.", () => {});
+                    return;
+                }
+                Papa.parse(file, {
+                    header: true, skipEmptyLines: true,
+                    complete: (results) => processAndPreviewCSV(results.data, matchDateInput.value),
+                    error: (err) => showModal("Errore Parsing", `Impossibile leggere il file CSV. Dettagli: ${err.message}`, () => {})
+                });
+            };
+            
+            const processAndPreviewCSV = (parsedData, matchDate) => {
+                let potentialMatches = [], duplicates = 0, incomplete = 0;
+                const requiredFields = ['Lega', 'Partita', 'Risultato', 'Probabilità', 'Mercato', 'Tip', 'Quota'];
+                const existingMatchSignatures = new Set(allMatches.map(m => `${m.data}-${m.partita}-${m.tip}`));
+                
+                for (const row of parsedData) {
+                    if (!requiredFields.every(f => row[f] && String(row[f]).trim() !== '')) { incomplete++; continue; }
+                    const matchData = {
+                        data: matchDate,
+                        lega: String(row.Lega).trim(),
+                        partita: String(row.Partita).trim(),
+                        risultato: String(row.Risultato).trim(),
+                        probabilita: parseInt(String(row.Probabilità).replace('%', '').trim()) || 0,
+                        mercato: String(row.Mercato).trim(),
+                        tip: String(row.Tip).trim(),
+                        quota: parseFloat(String(row.Quota).replace(',', '.').trim()) || 0
+                    };
+                    matchData.esito = calculateOutcome(matchData);
+                    const signature = `${matchData.data}-${matchData.partita}-${matchData.tip}`;
+                    if (existingMatchSignatures.has(signature)) { duplicates++; } 
+                    else { potentialMatches.push(matchData); existingMatchSignatures.add(signature); }
+                }
+                dataToUpload = potentialMatches;
+                uploadPreview.classList.remove('hidden');
+                uploadPreview.innerHTML = `
+                    <p><strong>Riepilogo:</strong></p>
+                    <ul class="list-disc list-inside text-sm mt-2">
+                        <li>Partite totali: ${parsedData.length}</li>
+                        <li>Scartate (incomplete): ${incomplete}</li>
+                        <li>Scartate (duplicate): ${duplicates}</li>
+                        <li class="font-bold text-blue-600">Da caricare: ${dataToUpload.length}</li>
+                    </ul>
+                    <button id="confirm-upload-btn" class="mt-4 w-full bg-green-600 text-white font-semibold py-2 rounded-lg hover:bg-green-700">Conferma e Carica</button>`;
+                document.getElementById('confirm-upload-btn').addEventListener('click', handleUploadConfirmed);
+            };
 
-            // Init App
+            const handleUploadConfirmed = async () => {
+                if (dataToUpload.length === 0) return;
+                showModal("Conferma Caricamento", `Stai per aggiungere ${dataToUpload.length} partite. Procedere?`, async () => {
+                    const matchesCollection = collection(db, "matches");
+                    const batch = writeBatch(db);
+                    dataToUpload.forEach(match => {
+                        const docId = `${match.data}_${match.partita}_${match.tip}`.replace(/[^a-zA-Z0-9-_]/g, '');
+                        const docRef = doc(matchesCollection, docId);
+                        batch.set(docRef, match);
+                    });
+                    try {
+                        await batch.commit();
+                        await loadAllMatches();
+                        populateFilters();
+                        applyFiltersAndRender();
+                        showModal("Successo", `${dataToUpload.length} partite caricate!`, () => {
+                            uploadPreview.classList.add('hidden');
+                            csvFileInput.value = '';
+                        });
+                    } catch (error) { showModal("Errore", `Errore durante il caricamento: ${error.message}`, () => {}); }
+                }, true);
+            };
+
+            const handleDeleteByDate = async () => {
+                const dateToDelete = deleteDateInput.value;
+                if (!dateToDelete) { showModal("Errore", "Seleziona una data.", () => {}); return; }
+                showModal("Conferma Cancellazione", `Cancellare tutte le partite del ${dateToDelete}? L'azione è irreversibile.`, async () => {
+                    const q = query(collection(db, "matches"), where("data", "==", dateToDelete));
+                    const snapshot = await getDocs(q);
+                    if(snapshot.empty) { showModal("Info", `Nessuna partita trovata per il ${dateToDelete}.`, () => {}); return; }
+                    const batch = writeBatch(db);
+                    snapshot.forEach(doc => batch.delete(doc.ref));
+                    await batch.commit();
+                    await loadAllMatches();
+                    populateFilters();
+                    applyFiltersAndRender();
+                    showModal("Successo", `Cancellate ${snapshot.size} partite.`, () => {});
+                }, true);
+            };
+
+            const handleClearAllData = async () => {
+                showModal("CONFERMA DEFINITIVA", `CANCELLARE TUTTO il database? L'azione non può essere annullata.`, async () => {
+                    const snapshot = await getDocs(collection(db, "matches"));
+                    if(snapshot.empty) { showModal("Info", "Database già vuoto.", () => {}); return; }
+                    const batch = writeBatch(db);
+                    snapshot.forEach(doc => batch.delete(doc.ref));
+                    await batch.commit();
+                    await loadAllMatches();
+                    populateFilters();
+                    applyFiltersAndRender();
+                    showModal("Successo", `Database azzerato. Cancellate ${snapshot.size} partite.`, () => {});
+                }, true);
+            };
+            
+            const exportToCsv = (data, filename) => {
+                if (data.length === 0) {
+                    showModal("Esportazione", "Nessun dato da esportare.", () => {});
+                    return;
+                }
+                const headers = ['data', 'lega', 'partita', 'risultato', 'probabilita', 'mercato', 'tip', 'quota', 'esito'];
+                const csv = Papa.unparse(data, { columns: headers });
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement("a");
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                link.setAttribute("download", filename);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+
+            // --- INIT APP ---
             const yesterday = new Date();
             yesterday.setDate(yesterday.getDate() - 1);
             matchDateInput.value = yesterday.toISOString().split('T')[0];
+            deleteDateInput.value = yesterday.toISOString().split('T')[0];
 
             navButtons.forEach(btn => btn.addEventListener('click', () => showPage(btn.dataset.page)));
             csvFileInput.addEventListener('change', handleFileUpload);
             deleteByDateBtn.addEventListener('click', handleDeleteByDate);
             clearDbBtn.addEventListener('click', handleClearAllData);
+            exportDbBtn.addEventListener('click', () => exportToCsv(allMatches, 'pronostici_bm_database.csv'));
+            exportFilteredBtn.addEventListener('click', () => exportToCsv(filteredMatches, 'pronostici_bm_filtrati.csv'));
             
             await loadAllMatches();
             setupFilters();
+            populateFilters();
             showPage('page-dashboard');
         });
 
@@ -338,103 +476,6 @@
             } catch (e) { console.error("Error calculating outcome:", e); return 'Errore'; }
         }
 
-        function handleFileUpload(event) {
-            const file = event.target.files[0];
-            const matchDate = document.getElementById('match-date').value;
-            if (!file || !matchDate) {
-                showModal("Errore", "Seleziona sia una data che un file CSV.", () => {});
-                return;
-            }
-            Papa.parse(file, {
-                header: true, skipEmptyLines: true,
-                complete: (results) => processAndPreviewCSV(results.data, matchDate),
-                error: (err) => showModal("Errore Parsing", `Impossibile leggere il file CSV. Dettagli: ${err.message}`, () => {})
-            });
-        }
-        
-        function processAndPreviewCSV(parsedData, matchDate) {
-            let potentialMatches = [], duplicates = 0, incomplete = 0;
-            const requiredFields = ['Lega', 'Partita', 'Risultato', 'Probabilità', 'Mercato', 'Tip', 'Quota'];
-            const existingMatchSignatures = new Set(allMatches.map(m => `${m.data}-${m.partita}-${m.tip}`));
-            
-            for (const row of parsedData) {
-                if (!requiredFields.every(f => row[f] && String(row[f]).trim() !== '')) { incomplete++; continue; }
-                const matchData = {
-                    data: matchDate,
-                    lega: String(row.Lega).trim(),
-                    partita: String(row.Partita).trim(),
-                    risultato: String(row.Risultato).trim(),
-                    probabilita: parseInt(String(row.Probabilità).replace('%', '').trim()),
-                    mercato: String(row.Mercato).trim(),
-                    tip: String(row.Tip).trim(),
-                    quota: parseFloat(String(row.Quota).replace(',', '.').trim())
-                };
-                matchData.esito = calculateOutcome(matchData);
-                const signature = `${matchData.data}-${matchData.partita}-${matchData.tip}`;
-                if (existingMatchSignatures.has(signature)) { duplicates++; } 
-                else { potentialMatches.push(matchData); existingMatchSignatures.add(signature); }
-            }
-            dataToUpload = potentialMatches;
-            const uploadPreview = document.getElementById('upload-preview');
-            uploadPreview.classList.remove('hidden');
-            uploadPreview.innerHTML = `
-                <p><strong>Riepilogo:</strong></p>
-                <ul class="list-disc list-inside text-sm mt-2">
-                    <li>Partite totali: ${parsedData.length}</li>
-                    <li>Scartate (incomplete): ${incomplete}</li>
-                    <li>Scartate (duplicate): ${duplicates}</li>
-                    <li class="font-bold text-blue-600">Da caricare: ${dataToUpload.length}</li>
-                </ul>
-                <button id="confirm-upload-btn" class="mt-4 w-full bg-green-600 text-white font-semibold py-2 rounded-lg hover:bg-green-700">Conferma e Carica</button>`;
-            document.getElementById('confirm-upload-btn').addEventListener('click', handleUploadConfirmed);
-        }
-
-        async function handleUploadConfirmed() {
-            if (dataToUpload.length === 0) return;
-            showModal("Conferma Caricamento", `Stai per aggiungere ${dataToUpload.length} partite. Procedere?`, async () => {
-                const matchesCollection = collection(db, "matches");
-                const batch = writeBatch(db);
-                dataToUpload.forEach(match => {
-                    const docId = `${match.data}_${match.partita}_${match.tip}`.replace(/[^a-zA-Z0-9-_]/g, '');
-                    const docRef = doc(matchesCollection, docId);
-                    batch.set(docRef, match);
-                });
-                try {
-                    await batch.commit();
-                    showModal("Successo", `${dataToUpload.length} partite caricate!`, async () => {
-                        await (document.querySelector('body').__handlers.loadAllMatches());
-                        document.getElementById('upload-preview').classList.add('hidden');
-                        document.getElementById('csv-file').value = '';
-                    });
-                } catch (error) { showModal("Errore", `Errore durante il caricamento: ${error.message}`, () => {}); }
-            }, true);
-        }
-
-        async function handleDeleteByDate() {
-            const dateToDelete = document.getElementById('delete-date').value;
-            if (!dateToDelete) { showModal("Errore", "Seleziona una data.", () => {}); return; }
-            showModal("Conferma Cancellazione", `Cancellare tutte le partite del ${dateToDelete}? L'azione è irreversibile.`, async () => {
-                const q = query(collection(db, "matches"), where("data", "==", dateToDelete));
-                const snapshot = await getDocs(q);
-                if(snapshot.empty) { showModal("Info", `Nessuna partita trovata per il ${dateToDelete}.`, () => {}); return; }
-                const batch = writeBatch(db);
-                snapshot.forEach(doc => batch.delete(doc.ref));
-                await batch.commit();
-                showModal("Successo", `Cancellate ${snapshot.size} partite.`, async () => await (document.querySelector('body').__handlers.loadAllMatches()));
-            }, true);
-        }
-
-        async function handleClearAllData() {
-            showModal("CONFERMA DEFINITIVA", `CANCELLARE TUTTO il database? L'azione non può essere annullata.`, async () => {
-                const snapshot = await getDocs(collection(db, "matches"));
-                if(snapshot.empty) { showModal("Info", "Database già vuoto.", () => {}); return; }
-                const batch = writeBatch(db);
-                snapshot.forEach(doc => batch.delete(doc.ref));
-                await batch.commit();
-                showModal("Successo", `Database azzerato. Cancellate ${snapshot.size} partite.`, async () => await (document.querySelector('body').__handlers.loadAllMatches()));
-            }, true);
-        }
-
         function renderStats(matches) {
             const won = matches.filter(m => m.esito === 'Vinto').length;
             const lost = matches.filter(m => m.esito === 'Perso').length;
@@ -459,9 +500,9 @@
             }
             container.innerHTML = matches.map(m => `
                 <div class="grid grid-cols-12 gap-2 items-center p-2 rounded-lg ${m.esito === 'Vinto' ? 'bg-green-50' : m.esito === 'Perso' ? 'bg-red-50' : 'bg-gray-50'}">
-                    <div class="col-span-1 text-xs text-gray-500">${m.data}</div>
-                    <div class="col-span-4 font-semibold">${m.partita}</div>
-                    <div class="col-span-2 text-sm text-gray-600">${m.mercato}: <strong>${m.tip}</strong></div>
+                    <div class="col-span-1 text-xs text-gray-500">${new Date(m.data + 'T00:00:00').toLocaleDateString('it-IT')}</div>
+                    <div class="col-span-3 font-semibold">${m.partita}</div>
+                    <div class="col-span-3 text-sm text-gray-600">${m.mercato}: <strong>${m.tip}</strong></div>
                     <div class="col-span-1 text-center font-bold">${m.risultato}</div>
                     <div class="col-span-1 text-center text-sm">${m.probabilita}%</div>
                     <div class="col-span-1 text-center text-sm">${m.quota.toFixed(2)}</div>
@@ -491,29 +532,6 @@
             cancelBtn.addEventListener('click', closeHandler);
             modal.classList.remove('hidden');
         }
-
-        // Attach handlers to body for easier recall after UI updates
-        document.querySelector('body').__handlers = {
-            loadAllMatches: async () => {
-                await document.dispatchEvent(new Event('DOMContentLoaded'));
-                // a bit of a hack to re-run the loader
-                const loader = document.getElementById('loading-overlay');
-                const loadAllMatchesFunc = async () => {
-                    loader.style.display = 'flex';
-                    const matchesCollection = collection(db, "matches");
-                    try {
-                        const snapshot = await getDocs(matchesCollection);
-                        allMatches = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        allMatches.sort((a, b) => new Date(b.data) - new Date(a.data));
-                        // After loading, repopulate filters and render
-                        document.querySelector('#filter-leagues').dispatchEvent(new Event('change'));
-                    } catch(e) { console.error(e) } 
-                    finally { loader.style.display = 'none'; }
-                };
-                await loadAllMatchesFunc();
-            }
-        };
-
     </script>
 </body>
 </html>
