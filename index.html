@@ -28,7 +28,7 @@
         }
         .sortable-header {
             cursor: pointer;
-            transition: background-color 0.2s;
+            transition: background-color: 0.2s;
         }
         .sortable-header:hover {
             background-color: #e5e7eb;
@@ -322,15 +322,31 @@
             
             const continentMap = { 'AM': 'Sud America', 'SA': 'Sud America', 'NA': 'Nord America', 'AS': 'Asia', 'AF': 'Africa', 'OC': 'Oceania' };
             const categorizeLeague = (leagueName) => {
-                const mainEuropeCodes = ['IT-', 'DE-', 'GB-', 'ES-', 'FR-'];
-                 // --- LOGIC CHANGE: Check for cups FIRST ---
+                // --- FINAL REFINED LOGIC FOR CATEGORIZATION ---
+                const mainLeagues = [
+                    'IT-Serie A', 'IT-Serie B', 'IT-Serie C', 
+                    'DE-Bundesliga', 
+                    'GB-Premier league', 'ENG-Premier league', 
+                    'ES-La Liga', 
+                    'FR-Ligue 1', 
+                    'CH-Super League', 
+                    'FI-Kakkonen', 
+                    'GR-Super League', 
+                    'PT-Liga Portugal'
+                ];
+                
+                if (leagueName.startsWith('EU-CL') || leagueName.startsWith('EU-EL') || leagueName.startsWith('EU-ECL')) return 'Coppe Europee';
                 if (leagueName.includes('Cup') || leagueName.includes('Coppa')) return 'Coppe Nazionali';
-                if (leagueName.startsWith('EU-')) return 'Coppe Europee';
-                if (mainEuropeCodes.some(code => leagueName.startsWith(code))) return 'Principali Europei';
+                if (mainLeagues.includes(leagueName)) return 'Principali Europei';
                 if (leagueName.endsWith('-NAZ')) return 'Nazionali';
+                
                 const continentMatch = leagueName.match(/^([A-Z]{2})-/);
                 if(continentMatch && continentMap[continentMatch[1]]) return continentMap[continentMatch[1]];
-                return 'Altro';
+
+                const europeanPrefixes = ['EU-', 'AL-', 'AM-', 'AT-', 'AZ-', 'BY-', 'BE-', 'BA-', 'BG-', 'HR-', 'CY-', 'CZ-', 'DK-', 'EN-', 'EE-', 'FO-', 'FI-', 'FR-', 'GE-', 'DE-', 'GI-', 'GR-', 'HU-', 'IS-', 'IE-', 'IT-', 'KZ-', 'XK-', 'LV-', 'LT-', 'LU-', 'MT-', 'MD-', 'ME-', 'NL-', 'MK-', 'NI-', 'NO-', 'PL-', 'PT-', 'RO-', 'RU-', 'SM-', 'RS-', 'SK-', 'SI-', 'ES-', 'SE-', 'CH-', 'TR-', 'UA-', 'GB-'];
+                if(europeanPrefixes.some(prefix => leagueName.startsWith(prefix))) return 'Campionati Europei (Altri)';
+
+                return 'Da Classificare'; // Fallback for any unhandled cases
             };
 
             const populateFilters = () => {
@@ -343,7 +359,7 @@
                     return acc;
                 }, {});
 
-                const categoryOrder = ['Principali Europei', 'Coppe Europee', 'Coppe Nazionali', 'Nazionali'];
+                const categoryOrder = ['Principali Europei', 'Coppe Europee', 'Coppe Nazionali', 'Campionati Europei (Altri)', 'Nazionali'];
                 const sortedCategories = Object.keys(categorized).sort((a, b) => {
                     const indexA = categoryOrder.indexOf(a);
                     const indexB = categoryOrder.indexOf(b);
@@ -755,3 +771,4 @@
     </script>
 </body>
 </html>
+
