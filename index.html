@@ -478,22 +478,27 @@
             
             const processAndPreviewCSV = (parsedData, matchDate) => {
                 let potentialMatches = [], duplicates = 0, incomplete = 0;
+                // --- BUG FIX: Strict validation rule ---
                 const requiredFields = ['Lega', 'Partita', 'Risultato', 'Probabilità', 'Mercato', 'Tip', 'Quota'];
                 const existingMatchSignatures = new Set(allMatches.map(m => `${m.data}-${m.lega}-${m.partita}-${m.tip}`));
                 
                 for (const row of parsedData) {
-                    if (!requiredFields.every(f => row[f] && String(row[f]).trim() !== '')) { incomplete++; continue; }
+                    // --- BUG FIX: Check all 7 fields ---
+                    if (!requiredFields.every(f => row[f] && String(row[f]).trim() !== '')) { 
+                        incomplete++; 
+                        continue; 
+                    }
                     const matchData = {
                         data: matchDate,
                         lega: String(row.Lega).trim(),
                         partita: String(row.Partita).trim(),
                         risultato: String(row.Risultato).trim(),
-                        probabilita: parseInt(String(row.Probabilità).replace('%', '').trim()) || 0,
+                        probabilita: parseInt(String(row['Probabilità']).replace('%', '').trim()) || 0,
                         mercato: String(row.Mercato).trim(),
                         tip: String(row.Tip).trim(),
                         quota: parseFloat(String(row.Quota).replace(',', '.').trim()) || 0
                     };
-                    if (!matchData.lega) continue;
+                    
                     matchData.esito = calculateOutcome(matchData);
                     const signature = `${matchData.data}-${matchData.lega}-${matchData.partita}-${matchData.tip}`;
                     if (existingMatchSignatures.has(signature)) { duplicates++; } 
@@ -504,9 +509,10 @@
                 uploadPreview.innerHTML = `
                     <p><strong>Riepilogo:</strong></p>
                     <ul class="list-disc list-inside text-sm mt-2">
-                        <li>Partite totali: ${parsedData.length}</li>
-                        <li>Scartate (incomplete/senza lega): ${incomplete}</li>
-                        <li>Scartate (duplicate): ${duplicates}</li>
+                        <li>Partite totali nel file: ${parsedData.length}</li>
+                        // --- BUG FIX: Correct error message ---
+                        <li>Scartate (dati mancanti o incompleti): ${incomplete}</li>
+                        <li>Scartate (duplicate nel DB): ${duplicates}</li>
                         <li class="font-bold text-blue-600">Da caricare: ${dataToUpload.length}</li>
                     </ul>
                     <button id="confirm-upload-btn" class="mt-4 w-full bg-green-600 text-white font-semibold py-2 rounded-lg hover:bg-green-700">Conferma e Carica</button>`;
@@ -751,3 +757,4 @@
     </script>
 </body>
 </html>
+
