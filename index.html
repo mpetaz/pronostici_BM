@@ -323,10 +323,11 @@
             const continentMap = { 'AM': 'Sud America', 'SA': 'Sud America', 'NA': 'Nord America', 'AS': 'Asia', 'AF': 'Africa', 'OC': 'Oceania' };
             const categorizeLeague = (leagueName) => {
                 const mainEuropeCodes = ['IT-', 'DE-', 'GB-', 'ES-', 'FR-'];
+                 // --- LOGIC CHANGE: Check for cups FIRST ---
+                if (leagueName.includes('Cup') || leagueName.includes('Coppa')) return 'Coppe Nazionali';
                 if (leagueName.startsWith('EU-')) return 'Coppe Europee';
                 if (mainEuropeCodes.some(code => leagueName.startsWith(code))) return 'Principali Europei';
                 if (leagueName.endsWith('-NAZ')) return 'Nazionali';
-                if (leagueName.includes('Cup') || leagueName.includes('Coppa')) return 'Coppe Nazionali';
                 const continentMatch = leagueName.match(/^([A-Z]{2})-/);
                 if(continentMatch && continentMap[continentMatch[1]]) return continentMap[continentMatch[1]];
                 return 'Altro';
@@ -476,14 +477,12 @@
                 });
             };
             
-            const processAndPreviewCSV = (parsedData, matchDate) => {
+             const processAndPreviewCSV = (parsedData, matchDate) => {
                 let potentialMatches = [], duplicates = 0, incomplete = 0;
-                // --- BUG FIX: Strict validation rule ---
                 const requiredFields = ['Lega', 'Partita', 'Risultato', 'Probabilità', 'Mercato', 'Tip', 'Quota'];
                 const existingMatchSignatures = new Set(allMatches.map(m => `${m.data}-${m.lega}-${m.partita}-${m.tip}`));
                 
                 for (const row of parsedData) {
-                    // --- BUG FIX: Check all 7 fields ---
                     if (!requiredFields.every(f => row[f] && String(row[f]).trim() !== '')) { 
                         incomplete++; 
                         continue; 
@@ -510,7 +509,6 @@
                     <p><strong>Riepilogo:</strong></p>
                     <ul class="list-disc list-inside text-sm mt-2">
                         <li>Partite totali nel file: ${parsedData.length}</li>
-                        // --- BUG FIX: Correct error message ---
                         <li>Scartate (dati mancanti o incompleti): ${incomplete}</li>
                         <li>Scartate (duplicate nel DB): ${duplicates}</li>
                         <li class="font-bold text-blue-600">Da caricare: ${dataToUpload.length}</li>
@@ -757,4 +755,3 @@
     </script>
 </body>
 </html>
-
