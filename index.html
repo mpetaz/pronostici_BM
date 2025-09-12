@@ -28,7 +28,7 @@
         }
         .sortable-header {
             cursor: pointer;
-            transition: background-color 0.2s;
+            transition: background-color: 0.2s;
         }
         .sortable-header:hover {
             background-color: #e5e7eb;
@@ -151,8 +151,8 @@
                                 <label class="block text-sm font-medium text-gray-700">Leghe</label>
                                 <button id="reset-leagues-btn" class="text-xs text-blue-600 hover:underline font-semibold">Azzera</button>
                             </div>
-                            <div id="league-filters-container" class="w-full h-80 p-2 border rounded-lg custom-scrollbar overflow-y-auto bg-gray-50 space-y-2">
-                                <!-- League categories will be injected here -->
+                            <div id="league-filters-grid" class="grid grid-cols-1 md:grid-cols-2 gap-2 h-80">
+                                <!-- League boxes will be dynamically created here -->
                             </div>
                         </div>
                         <!-- Column 3: Tips -->
@@ -258,7 +258,7 @@
             const exportFilteredBtn = document.getElementById('export-filtered-btn');
             const filterDateStart = document.getElementById('filter-date-start');
             const filterDateEnd = document.getElementById('filter-date-end');
-            const leagueFiltersContainer = document.getElementById('league-filters-container');
+            const leagueFiltersGrid = document.getElementById('league-filters-grid');
             const tipFiltersContainer = document.getElementById('tip-filters-container');
             const probabilitySliderEl = document.getElementById('probability-slider');
             const oddsSliderEl = document.getElementById('odds-slider');
@@ -301,7 +301,7 @@
             const applyFiltersAndRender = () => {
                 const startDate = filterDateStart.value;
                 const endDate = filterDateEnd.value;
-                const selectedLeagues = Array.from(leagueFiltersContainer.querySelectorAll('input.league-checkbox:checked')).map(cb => cb.value);
+                const selectedLeagues = Array.from(leagueFiltersGrid.querySelectorAll('input.league-checkbox:checked')).map(cb => cb.value);
                 const selectedTips = Array.from(tipFiltersContainer.querySelectorAll('.tip-button.active')).map(btn => btn.dataset.tip);
                 const [minProb, maxProb] = probabilitySliderEl.noUiSlider.get();
                 const [minOdds, maxOdds] = oddsSliderEl.noUiSlider.get();
@@ -329,7 +329,7 @@
                     'EU-ITA Serie C Girone A', 'EU-ITA Serie C Girone B', 'EU-ITA Serie C Girone C', 'EU-MDA Super Liga',
                     'EU-MKD First League', 'EU-NIR Championship', 'EU-NIR Premier Division', 'EU-NIR Premiership',
                     'EU-NLD Eerste Divisie', 'EU-NLD Eredivisie', 'EU-NOR 2. Division - Group 1', 'EU-NOR Obos-Ligaen',
-                    'EU-POL Ekstraklasa', 'EU-POR Liga Portugal 2', 'EU-ROU Chance Liga', 'EU-ROU First Division',
+                    'EU-POL Ekstraklasa', 'EU-ROU Chance Liga', 'EU-ROU First Division',
                     'EU-ROU Liga 2', 'EU-ROU Superliga', 'EU-RUS Premier League', 'EU-SRB Prva Liga', 'EU-SVK 2. Liga',
                     'EU-SVK Niké Liga', 'EU-SVN 2. SNL', 'EU-SWE Ettan: North', 'EU-SWE Ettan: South', 'EU-SWE Superettan',
                     'EU-TUR 1. Lig', 'EU-TUR Süper Lig', 'EU-UKR Persha Liga', 'EU-UKR Premier League', 'EU-WAL Premier League', 'EU-FRA Ligue 1'
@@ -339,7 +339,7 @@
                 if (leagueName.includes('WCQ')) return 'Qualificazioni Mondiali';
                 if (/(Cup|Coppa|Copa|Beker|Taça)/i.test(leagueName)) return 'Coppe Nazionali';
                 if (preferentialLeagues.includes(leagueName)) return 'Europa (Preferenziali)';
-                if (leagueName.endsWith('-NAZ')) return 'Nazionali';
+                if (leagueName.endsWith('-NAZ')) return 'Qualificazioni Mondiali'; // Grouping with WCQ
                 
                 const continentMatch = leagueName.match(/^(AS|AF|NA|SA|OC)-/);
                 if (continentMatch) return 'Resto del Mondo';
@@ -360,42 +360,41 @@
                     return acc;
                 }, {});
 
-                const categoryOrder = ['Europa (Preferenziali)', 'Coppe Europee', 'Qualificazioni Mondiali', 'Coppe Nazionali', 'Europa (Altri)', 'Resto del Mondo', 'Nazionali', 'Non Classificati'];
-                const sortedCategories = Object.keys(categorized).sort((a, b) => {
-                    const indexA = categoryOrder.indexOf(a);
-                    const indexB = categoryOrder.indexOf(b);
-                    if (indexA > -1 && indexB > -1) return indexA - indexB;
-                    if (indexA > -1) return -1;
-                    if (indexB > -1) return 1;
-                    return a.localeCompare(b);
-                });
+                const categoryOrder = ['Europa (Preferenziali)', 'Europa (Altri)', 'Resto del Mondo', 'Coppe Europee', 'Qualificazioni Mondiali', 'Coppe Nazionali', 'Non Classificati'];
+                leagueFiltersGrid.innerHTML = ''; // Clear the grid
 
-                leagueFiltersContainer.innerHTML = sortedCategories.map(category => {
+                categoryOrder.forEach(category => {
+                    if (!categorized[category] || categorized[category].length === 0) return;
+
+                    const box = document.createElement('div');
+                    box.className = 'bg-gray-50 border rounded-lg p-2 flex flex-col';
+
                     const leaguesInCategory = categorized[category].sort().map(league => `
                         <label class="flex items-center space-x-2 p-1 rounded hover:bg-blue-50 cursor-pointer">
                             <input type="checkbox" value="${league}" class="league-checkbox form-checkbox h-4 w-4 rounded text-blue-600 border-gray-300 focus:ring-blue-500">
                             <span class="text-sm text-gray-700 truncate" title="${league}">${league}</span>
                         </label>`).join('');
-                    return `
-                        <div class="league-category">
-                            <h4 class="font-semibold text-xs uppercase text-gray-500 sticky top-0 bg-gray-50 py-1 px-1">
-                               <label class="flex items-center space-x-2 cursor-pointer">
-                                    <input type="checkbox" class="category-select-all form-checkbox h-4 w-4 rounded text-blue-600 border-gray-300 focus:ring-blue-500">
-                                    <span>${category}</span>
-                                </label>
-                            </h4>
-                            <div class="pl-2 space-y-1">${leaguesInCategory}</div>
-                        </div>`;
-                }).join('');
+                    
+                    box.innerHTML = `
+                        <h4 class="font-semibold text-xs uppercase text-gray-500 mb-1">
+                           <label class="flex items-center space-x-2 cursor-pointer">
+                                <input type="checkbox" class="category-select-all form-checkbox h-4 w-4 rounded text-blue-600 border-gray-300 focus:ring-blue-500">
+                                <span>${category}</span>
+                            </label>
+                        </h4>
+                        <div class="flex-grow custom-scrollbar overflow-y-auto space-y-1 pl-2">${leaguesInCategory}</div>`;
+                    
+                    leagueFiltersGrid.appendChild(box);
+                });
                 
-                leagueFiltersContainer.querySelectorAll('.league-checkbox').forEach(cb => {
+                leagueFiltersGrid.querySelectorAll('.league-checkbox').forEach(cb => {
                     cb.addEventListener('change', applyFiltersAndRender);
                 });
 
-                leagueFiltersContainer.querySelectorAll('.category-select-all').forEach(masterCb => {
+                leagueFiltersGrid.querySelectorAll('.category-select-all').forEach(masterCb => {
                     masterCb.addEventListener('change', (e) => {
                         const isChecked = e.target.checked;
-                        const categoryDiv = e.target.closest('.league-category');
+                        const categoryDiv = e.target.closest('.bg-gray-50');
                         categoryDiv.querySelectorAll('.league-checkbox').forEach(leagueCb => {
                             leagueCb.checked = isChecked;
                         });
@@ -462,7 +461,7 @@
                 oddsSliderEl.noUiSlider.on('set', applyFiltersAndRender);
                 
                 resetLeaguesBtn.addEventListener('click', () => {
-                     leagueFiltersContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+                     leagueFiltersGrid.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
                      applyFiltersAndRender();
                 });
                  resetTipsBtn.addEventListener('click', () => {
@@ -772,3 +771,778 @@
     </script>
 </body>
 </html>
+
+<!DOCTYPE html>
+<html lang="it" class="h-full bg-gray-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pronostici BM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/nouislider@15.7.1/dist/nouislider.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/nouislider@15.7.1/dist/nouislider.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .noUi-connect { background: #3b82f6; }
+        .noUi-handle { border-radius: 9999px; }
+        .page { display: none; }
+        .page.active { display: block; }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        .tip-button.active {
+            background-color: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+            font-weight: 600;
+        }
+        .sortable-header {
+            cursor: pointer;
+            transition: background-color: 0.2s;
+        }
+        .sortable-header:hover {
+            background-color: #e5e7eb;
+        }
+        .sort-icon {
+            opacity: 0.5;
+            transition: opacity 0.2s;
+        }
+        .sortable-header.active .sort-icon {
+            opacity: 1;
+            color: #3b82f6;
+        }
+    </style>
+</head>
+<body class="h-full text-gray-800">
+    <div id="loading-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+ 		<div class="text-white text-xl font-semibold animate-pulse">Caricamento Database...</div>
+ 	</div>
+    <div class="min-h-full flex flex-col">
+        <!-- Header -->
+        <header class="bg-white shadow-sm">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center py-4">
+                    <div class="flex items-center space-x-3">
+                        <i class="fa-solid fa-chart-line text-2xl text-blue-600"></i>
+                        <h1 class="text-xl font-bold text-gray-900">Pronostici BM</h1>
+                    </div>
+                    <nav class="flex space-x-2 sm:space-x-4">
+                        <button data-page="page-dashboard" class="nav-button bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold shadow-sm hover:bg-blue-700 transition-colors">
+                            <i class="fa-solid fa-magnifying-glass-chart mr-2"></i>Dashboard
+                        </button>
+                        <button data-page="page-db-management" class="nav-button bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-300 transition-colors">
+                            <i class="fa-solid fa-database mr-2"></i>Gestione DB
+                        </button>
+                    </nav>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-grow">
+            <!-- Pagina Gestione Database -->
+            <div id="page-db-management" class="page max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- Upload Section -->
+                    <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-200">
+                        <h2 class="text-2xl font-bold mb-4 border-b pb-2">Carica Nuove Partite</h2>
+                        <div class="space-y-6">
+                            <div>
+                                <label for="match-date" class="block text-sm font-medium text-gray-700 mb-1">Data Partite</label>
+                                <input type="date" id="match-date" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label for="csv-file" class="block text-sm font-medium text-gray-700 mb-1">File CSV</label>
+                                <input type="file" id="csv-file" accept=".csv" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                            </div>
+                            <div id="upload-preview" class="hidden bg-gray-50 p-4 rounded-lg border">
+                                <!-- Preview content will be injected here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actions Section -->
+                    <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-200">
+                        <h2 class="text-2xl font-bold mb-4 text-red-600 border-b border-red-200 pb-2">Zona Pericolo 🤣</h2>
+                        <div class="space-y-6">
+                            <div>
+                                <label for="delete-date" class="block text-sm font-medium text-gray-700 mb-1">Cancella per data</label>
+                                <div class="flex space-x-2">
+                                    <input type="date" id="delete-date" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm">
+                                    <button id="delete-by-date-btn" class="bg-yellow-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-yellow-600 transition-colors flex-shrink-0">Cancella</button>
+                                </div>
+                            </div>
+                            <div class="border-t pt-6">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Esporta Database Completo</label>
+                                <button id="export-db-btn" class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors">
+                                    <i class="fa-solid fa-download mr-2"></i>Download CSV Completo
+                                </button>
+                            </div>
+                            <div class="border-t pt-6">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Azzera l'intero database</label>
+                                <button id="clear-db-btn" class="w-full bg-red-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-700 transition-colors">
+                                    <i class="fa-solid fa-triangle-exclamation mr-2"></i>CANCELLA TUTTO
+                                </button>
+                                <p class="text-xs text-gray-500 mt-2">Attenzione: questa azione è irreversibile.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pagina Dashboard Statistica -->
+            <div id="page-dashboard" class="page max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <!-- Filters -->
+                <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-200 mb-8">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Column 1: Date & Sliders -->
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Periodo</label>
+                                <div class="flex flex-col space-y-2">
+                                    <input type="date" id="filter-date-start" class="w-full p-2 border rounded-lg">
+                                    <input type="date" id="filter-date-end" class="w-full p-2 border rounded-lg">
+                                </div>
+                            </div>
+                             <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Probabilità (%)</label>
+                                <div id="probability-slider" class="mt-4"></div>
+                                <div id="probability-value" class="text-sm text-center mt-1"></div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Quota</label>
+                                <div id="odds-slider" class="mt-4"></div>
+                                <div id="odds-value" class="text-sm text-center mt-1"></div>
+                            </div>
+                        </div>
+                        <!-- Column 2: Leagues -->
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="block text-sm font-medium text-gray-700">Leghe</label>
+                                <button id="reset-leagues-btn" class="text-xs text-blue-600 hover:underline font-semibold">Azzera</button>
+                            </div>
+                            <div id="league-filters-grid" class="grid grid-cols-1 md:grid-cols-2 gap-2 h-80">
+                                <!-- League boxes will be dynamically created here -->
+                            </div>
+                        </div>
+                        <!-- Column 3: Tips -->
+                         <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="block text-sm font-medium text-gray-700">Tips</label>
+                                <button id="reset-tips-btn" class="text-xs text-blue-600 hover:underline font-semibold">Azzera</button>
+                            </div>
+                            <div id="tip-filters-container" class="w-full h-80 p-2 border rounded-lg custom-scrollbar overflow-y-auto bg-gray-50 space-y-2">
+                                <!-- Tip categories will be injected here -->
+                            </div>
+                        </div>
+                    </div>
+                     <div class="mt-6 flex justify-end space-x-4">
+                        <button id="export-filtered-btn" class="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors">
+                            <i class="fa-solid fa-file-csv mr-2"></i>Esporta Filtrati
+                        </button>
+                        <button id="reset-filters-btn" class="bg-gray-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-600 transition-colors">
+                            <i class="fa-solid fa-arrows-rotate mr-2"></i>Reset Tutti i Filtri
+                        </button>
+                    </div>
+                </div>
+                <!-- Stats -->
+                <div id="stats-container" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8"></div>
+                <!-- Match List -->
+                <div id="match-list-container" class="bg-white p-6 rounded-2xl shadow-md border border-gray-200">
+                    <h3 class="text-xl font-bold mb-4">Partite filtrate (<span id="filtered-count">0</span>)</h3>
+                    <div class="max-h-[60vh] overflow-y-auto custom-scrollbar">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-gray-100 text-xs uppercase sticky top-0">
+                                <tr>
+                                    <th class="p-3 font-semibold sortable-header" data-sort="data">Data <i class="fa-solid fa-sort sort-icon"></i></th>
+                                    <th class="p-3 font-semibold sortable-header" data-sort="lega">Lega <i class="fa-solid fa-sort sort-icon"></i></th>
+                                    <th class="p-3 font-semibold sortable-header" data-sort="partita">Partita <i class="fa-solid fa-sort sort-icon"></i></th>
+                                    <th class="p-3 font-semibold sortable-header" data-sort="mercato">Mercato <i class="fa-solid fa-sort sort-icon"></i></th>
+                                    <th class="p-3 font-semibold sortable-header" data-sort="tip">Tip <i class="fa-solid fa-sort sort-icon"></i></th>
+                                    <th class="p-3 font-semibold text-center">Ris.</th>
+                                    <th class="p-3 font-semibold sortable-header text-center" data-sort="probabilita">Prob. <i class="fa-solid fa-sort sort-icon"></i></th>
+                                    <th class="p-3 font-semibold sortable-header text-center" data-sort="quota">Quota <i class="fa-solid fa-sort sort-icon"></i></th>
+                                    <th class="p-3 font-semibold sortable-header text-center" data-sort="esito">Esito <i class="fa-solid fa-sort sort-icon"></i></th>
+                                </tr>
+                            </thead>
+                            <tbody id="match-list-body" class="divide-y"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Modal -->
+    <div id="modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <h3 id="modal-title" class="text-lg font-bold"></h3>
+            <p id="modal-body" class="mt-2 text-sm text-gray-600"></p>
+            <div class="mt-6 flex justify-end space-x-3">
+                <button id="modal-cancel" class="bg-gray-200 px-4 py-2 rounded-lg font-semibold">Annulla</button>
+                <button id="modal-confirm" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold">Conferma</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
+        import { getFirestore, collection, getDocs, writeBatch, query, where, doc } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyCWay4QfY1bxj4yBLnho3Zn02_NaxzbVRQ",
+            authDomain: "betmines-pronostici.firebaseapp.com",
+            projectId: "betmines-pronostici",
+            storageBucket: "betmines-pronostici.firebasestorage.app",
+            messagingSenderId: "716119578109",
+            appId: "1:716119578109:web:01e8b9dad7b17c91d63594"
+        };
+        
+        let db;
+        let allMatches = [];
+        let dataToUpload = [];
+        let filteredMatches = [];
+        let sortState = { column: 'data', direction: 'desc' };
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+            } catch (error) {
+                console.error("Firebase Initialization Error:", error);
+                document.body.innerHTML = `<div class="p-4 bg-red-100 text-red-800">Errore critico durante l'inizializzazione di Firebase.</div>`;
+                return;
+            }
+            
+            // --- UI elements ---
+            const pages = document.querySelectorAll('.page');
+            const navButtons = document.querySelectorAll('.nav-button');
+            const matchDateInput = document.getElementById('match-date');
+            const csvFileInput = document.getElementById('csv-file');
+            const uploadPreview = document.getElementById('upload-preview');
+            const deleteByDateBtn = document.getElementById('delete-by-date-btn');
+            const deleteDateInput = document.getElementById('delete-date');
+            const clearDbBtn = document.getElementById('clear-db-btn');
+            const exportDbBtn = document.getElementById('export-db-btn');
+            const exportFilteredBtn = document.getElementById('export-filtered-btn');
+            const filterDateStart = document.getElementById('filter-date-start');
+            const filterDateEnd = document.getElementById('filter-date-end');
+            const leagueFiltersGrid = document.getElementById('league-filters-grid');
+            const tipFiltersContainer = document.getElementById('tip-filters-container');
+            const probabilitySliderEl = document.getElementById('probability-slider');
+            const oddsSliderEl = document.getElementById('odds-slider');
+            const resetFiltersBtn = document.getElementById('reset-filters-btn');
+            const resetLeaguesBtn = document.getElementById('reset-leagues-btn');
+            const resetTipsBtn = document.getElementById('reset-tips-btn');
+            const loadingOverlay = document.getElementById('loading-overlay');
+            const sortableHeaders = document.querySelectorAll('.sortable-header');
+
+            // --- CORE FUNCTIONS ---
+
+            const showPage = (pageId) => {
+                pages.forEach(page => page.classList.remove('active'));
+                document.getElementById(pageId).classList.add('active');
+                navButtons.forEach(btn => {
+                    btn.classList.toggle('bg-blue-600', btn.dataset.page === pageId);
+                    btn.classList.toggle('text-white', btn.dataset.page === pageId);
+                    btn.classList.toggle('bg-gray-200', btn.dataset.page !== pageId);
+                    btn.classList.toggle('text-gray-700', btn.dataset.page !== pageId);
+                });
+                if (pageId === 'page-dashboard') {
+                    applyFiltersAndRender();
+                }
+            };
+
+            const loadAllMatches = async () => {
+                loadingOverlay.style.display = 'flex';
+                const matchesCollection = collection(db, "matches");
+                try {
+                    const snapshot = await getDocs(matchesCollection);
+                    allMatches = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                } catch(e) {
+                    console.error("Error loading matches: ", e);
+                    showModal("Errore di Caricamento", "Impossibile caricare i dati dal database.", () => {});
+                } finally {
+                    loadingOverlay.style.display = 'none';
+                }
+            };
+            
+            const applyFiltersAndRender = () => {
+                const startDate = filterDateStart.value;
+                const endDate = filterDateEnd.value;
+                const selectedLeagues = Array.from(leagueFiltersGrid.querySelectorAll('input.league-checkbox:checked')).map(cb => cb.value);
+                const selectedTips = Array.from(tipFiltersContainer.querySelectorAll('.tip-button.active')).map(btn => btn.dataset.tip);
+                const [minProb, maxProb] = probabilitySliderEl.noUiSlider.get();
+                const [minOdds, maxOdds] = oddsSliderEl.noUiSlider.get();
+
+                filteredMatches = allMatches.filter(m => {
+                    if (startDate && m.data < startDate) return false;
+                    if (endDate && m.data > endDate) return false;
+                    if (selectedLeagues.length > 0 && !selectedLeagues.includes(m.lega)) return false;
+                    if (selectedTips.length > 0 && !selectedTips.includes(m.tip)) return false;
+                    if (m.probabilita < minProb || m.probabilita > maxProb) return false;
+                    if (m.quota < minOdds || m.quota > maxOdds) return false;
+                    return true;
+                });
+                
+                sortAndRenderMatches();
+                renderStats(filteredMatches);
+            };
+            
+            const continentMap = { 'AM': 'Sud America', 'SA': 'Sud America', 'NA': 'Nord America', 'AS': 'Asia', 'AF': 'Africa', 'OC': 'Oceania' };
+            const categorizeLeague = (leagueName) => {
+                 const preferentialLeagues = [
+                    'EU-BEL Challenger Pro League', 'EU-BGR First League', 'EU-CYP 1. Division', 'EU-CZE Chance Národní Liga',
+                    'EU-DEU Bundesliga', 'EU-DNK Superliga', 'EU-ENG League One', 'EU-ENG Premier League', 'EU-ENG Southern League',
+                    'EU-ESP La Liga', 'EU-FIN Kakkonen', 'EU-FIN Veikkausliiga', 'EU-ITA Serie A', 'EU-ITA Serie B',
+                    'EU-ITA Serie C Girone A', 'EU-ITA Serie C Girone B', 'EU-ITA Serie C Girone C', 'EU-MDA Super Liga',
+                    'EU-MKD First League', 'EU-NIR Championship', 'EU-NIR Premier Division', 'EU-NIR Premiership',
+                    'EU-NLD Eerste Divisie', 'EU-NLD Eredivisie', 'EU-NOR 2. Division - Group 1', 'EU-NOR Obos-Ligaen',
+                    'EU-POL Ekstraklasa', 'EU-ROU Chance Liga', 'EU-ROU First Division',
+                    'EU-ROU Liga 2', 'EU-ROU Superliga', 'EU-RUS Premier League', 'EU-SRB Prva Liga', 'EU-SVK 2. Liga',
+                    'EU-SVK Niké Liga', 'EU-SVN 2. SNL', 'EU-SWE Ettan: North', 'EU-SWE Ettan: South', 'EU-SWE Superettan',
+                    'EU-TUR 1. Lig', 'EU-TUR Süper Lig', 'EU-UKR Persha Liga', 'EU-UKR Premier League', 'EU-WAL Premier League', 'EU-FRA Ligue 1'
+                ];
+                
+                if (leagueName.startsWith('EU-CL') || leagueName.startsWith('EU-EL') || leagueName.startsWith('EU-ECL')) return 'Coppe Europee';
+                if (leagueName.includes('WCQ')) return 'Qualificazioni Mondiali';
+                if (/(Cup|Coppa|Copa|Beker|Taça)/i.test(leagueName)) return 'Coppe Nazionali';
+                if (preferentialLeagues.includes(leagueName)) return 'Europa (Preferenziali)';
+                if (leagueName.endsWith('-NAZ')) return 'Qualificazioni Mondiali'; // Grouping with WCQ
+                
+                const continentMatch = leagueName.match(/^(AS|AF|NA|SA|OC)-/);
+                if (continentMatch) return 'Resto del Mondo';
+
+                const europeanPrefixes = ['EU-', 'AL-', 'AM-', 'AT-', 'AZ-', 'BY-', 'BE-', 'BA-', 'BG-', 'HR-', 'CY-', 'CZ-', 'DK-', 'EN-', 'EE-', 'FO-', 'FI-', 'FR-', 'GE-', 'DE-', 'GI-', 'GR-', 'HU-', 'IS-', 'IE-', 'IT-', 'KZ-', 'XK-', 'LV-', 'LT-', 'LU-', 'MT-', 'MD-', 'ME-', 'NL-', 'MK-', 'NI-', 'NO-', 'PL-', 'PT-', 'RO-', 'RU-', 'SM-', 'RS-', 'SK-', 'SI-', 'ES-', 'SE-', 'CH-', 'TR-', 'UA-', 'GB-'];
+                if (europeanPrefixes.some(prefix => leagueName.startsWith(prefix))) return 'Europa (Altri)';
+
+                return 'Non Classificati';
+            };
+
+            const populateFilters = () => {
+                // Leagues
+                const leagues = [...new Set(allMatches.map(m => m.lega))];
+                const categorized = leagues.reduce((acc, league) => {
+                    const category = categorizeLeague(league);
+                    if (!acc[category]) acc[category] = [];
+                    acc[category].push(league);
+                    return acc;
+                }, {});
+
+                const categoryOrder = ['Europa (Preferenziali)', 'Europa (Altri)', 'Resto del Mondo', 'Coppe Europee', 'Qualificazioni Mondiali', 'Coppe Nazionali', 'Non Classificati'];
+                leagueFiltersGrid.innerHTML = ''; // Clear the grid
+
+                categoryOrder.forEach(category => {
+                    if (!categorized[category] || categorized[category].length === 0) return;
+
+                    const box = document.createElement('div');
+                    box.className = 'bg-gray-50 border rounded-lg p-2 flex flex-col';
+
+                    const leaguesInCategory = categorized[category].sort().map(league => `
+                        <label class="flex items-center space-x-2 p-1 rounded hover:bg-blue-50 cursor-pointer">
+                            <input type="checkbox" value="${league}" class="league-checkbox form-checkbox h-4 w-4 rounded text-blue-600 border-gray-300 focus:ring-blue-500">
+                            <span class="text-sm text-gray-700 truncate" title="${league}">${league}</span>
+                        </label>`).join('');
+                    
+                    box.innerHTML = `
+                        <h4 class="font-semibold text-xs uppercase text-gray-500 mb-1">
+                           <label class="flex items-center space-x-2 cursor-pointer">
+                                <input type="checkbox" class="category-select-all form-checkbox h-4 w-4 rounded text-blue-600 border-gray-300 focus:ring-blue-500">
+                                <span>${category}</span>
+                            </label>
+                        </h4>
+                        <div class="flex-grow custom-scrollbar overflow-y-auto space-y-1 pl-2">${leaguesInCategory}</div>`;
+                    
+                    leagueFiltersGrid.appendChild(box);
+                });
+                
+                leagueFiltersGrid.querySelectorAll('.league-checkbox').forEach(cb => {
+                    cb.addEventListener('change', applyFiltersAndRender);
+                });
+
+                leagueFiltersGrid.querySelectorAll('.category-select-all').forEach(masterCb => {
+                    masterCb.addEventListener('change', (e) => {
+                        const isChecked = e.target.checked;
+                        const categoryDiv = e.target.closest('.bg-gray-50');
+                        categoryDiv.querySelectorAll('.league-checkbox').forEach(leagueCb => {
+                            leagueCb.checked = isChecked;
+                        });
+                        applyFiltersAndRender();
+                    });
+                });
+
+                // Predefined Tips by Market
+                const predefinedTips = {
+                    '1X2': ['1', 'X', '2'],
+                    'Doppia Chance': ['1X', '12', 'X2'],
+                    'Under/Over': ['-1.5', '+1.5', '-2.5', '+2.5', '-3.5', '+3.5'],
+                    'Gol/No Gol': ['GOL', 'NO GOL']
+                };
+                
+                tipFiltersContainer.innerHTML = Object.entries(predefinedTips).map(([market, tips]) => {
+                    const tipButtons = tips.map(tip => `
+                        <button data-tip="${tip}" class="tip-button px-3 py-1 text-sm rounded-full border border-gray-300 bg-white hover:bg-gray-100 transition-colors">${tip}</button>
+                    `).join('');
+                    return `
+                        <div>
+                             <h4 class="font-semibold text-xs uppercase text-gray-500 py-1 px-1">${market}</h4>
+                             <div class="flex flex-wrap gap-2 p-1">${tipButtons}</div>
+                        </div>
+                    `;
+                }).join('');
+
+
+                tipFiltersContainer.querySelectorAll('.tip-button').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        btn.classList.toggle('active');
+                        applyFiltersAndRender();
+                    });
+                });
+            };
+
+            const setupFilters = () => {
+                // Sliders with dynamic range
+                const probs = allMatches.map(m => m.probabilita).filter(p => p);
+                const odds = allMatches.map(m => m.quota).filter(q => q);
+                const minProb = probs.length > 0 ? Math.min(...probs) : 0;
+                const maxProb = probs.length > 0 ? Math.max(...probs) : 100;
+                const minOdds = odds.length > 0 ? Math.floor(Math.min(...odds) * 10) / 10 : 1;
+                const maxOdds = odds.length > 0 ? Math.ceil(Math.max(...odds) * 10) / 10 : 10;
+
+                if (probabilitySliderEl.noUiSlider) probabilitySliderEl.noUiSlider.destroy();
+                noUiSlider.create(probabilitySliderEl, { 
+                    start: [minProb, maxProb], connect: true, 
+                    range: { 'min': minProb, 'max': maxProb }, step: 1, 
+                    format: { to: v => Math.round(v), from: v => Math.round(v) } 
+                });
+
+                if (oddsSliderEl.noUiSlider) oddsSliderEl.noUiSlider.destroy();
+                noUiSlider.create(oddsSliderEl, { 
+                    start: [minOdds, maxOdds], connect: true, 
+                    range: { 'min': minOdds, 'max': maxOdds }, step: 0.01 
+                });
+
+                probabilitySliderEl.noUiSlider.on('update', (v) => { document.getElementById('probability-value').innerText = `${v[0]}% - ${v[1]}%`; });
+                oddsSliderEl.noUiSlider.on('update', (v) => { document.getElementById('odds-value').innerText = `${parseFloat(v[0]).toFixed(2)} - ${parseFloat(v[1]).toFixed(2)}`; });
+                
+                [filterDateStart, filterDateEnd].forEach(el => el.addEventListener('change', applyFiltersAndRender));
+                probabilitySliderEl.noUiSlider.on('set', applyFiltersAndRender); 
+                oddsSliderEl.noUiSlider.on('set', applyFiltersAndRender);
+                
+                resetLeaguesBtn.addEventListener('click', () => {
+                     leagueFiltersGrid.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+                     applyFiltersAndRender();
+                });
+                 resetTipsBtn.addEventListener('click', () => {
+                     tipFiltersContainer.querySelectorAll('.tip-button').forEach(btn => btn.classList.remove('active'));
+                     applyFiltersAndRender();
+                });
+
+                resetFiltersBtn.addEventListener('click', () => {
+                    filterDateStart.value = '';
+                    filterDateEnd.value = '';
+                    resetLeaguesBtn.click();
+                    resetTipsBtn.click();
+                    probabilitySliderEl.noUiSlider.set([minProb, maxProb]);
+                    oddsSliderEl.noUiSlider.set([minOdds, maxOdds]);
+                    applyFiltersAndRender();
+                });
+            };
+            
+            const handleFileUpload = (event) => {
+                const file = event.target.files[0];
+                if (!file || !matchDateInput.value) {
+                    showModal("Errore", "Seleziona sia una data che un file CSV.", () => {});
+                    return;
+                }
+                Papa.parse(file, {
+                    header: true, skipEmptyLines: true,
+                    complete: (results) => processAndPreviewCSV(results.data, matchDateInput.value),
+                    error: (err) => showModal("Errore Parsing", `Impossibile leggere il file CSV. Dettagli: ${err.message}`, () => {})
+                });
+            };
+            
+             const processAndPreviewCSV = (parsedData, matchDate) => {
+                let potentialMatches = [], duplicates = 0, incomplete = 0;
+                const requiredFields = ['Lega', 'Partita', 'Risultato', 'Probabilità', 'Mercato', 'Tip', 'Quota'];
+                const existingMatchSignatures = new Set(allMatches.map(m => `${m.data}-${m.lega}-${m.partita}-${m.tip}`));
+                
+                for (const row of parsedData) {
+                    if (!requiredFields.every(f => row[f] && String(row[f]).trim() !== '')) { 
+                        incomplete++; 
+                        continue; 
+                    }
+                    const matchData = {
+                        data: matchDate,
+                        lega: String(row.Lega).trim(),
+                        partita: String(row.Partita).trim(),
+                        risultato: String(row.Risultato).trim(),
+                        probabilita: parseInt(String(row['Probabilità']).replace('%', '').trim()) || 0,
+                        mercato: String(row.Mercato).trim(),
+                        tip: String(row.Tip).trim(),
+                        quota: parseFloat(String(row.Quota).replace(',', '.').trim()) || 0
+                    };
+                    
+                    matchData.esito = calculateOutcome(matchData);
+                    const signature = `${matchData.data}-${matchData.lega}-${matchData.partita}-${matchData.tip}`;
+                    if (existingMatchSignatures.has(signature)) { duplicates++; } 
+                    else { potentialMatches.push(matchData); existingMatchSignatures.add(signature); }
+                }
+                dataToUpload = potentialMatches;
+                uploadPreview.classList.remove('hidden');
+                uploadPreview.innerHTML = `
+                    <p><strong>Riepilogo:</strong></p>
+                    <ul class="list-disc list-inside text-sm mt-2">
+                        <li>Partite totali nel file: ${parsedData.length}</li>
+                        <li>Scartate (dati mancanti o incompleti): ${incomplete}</li>
+                        <li>Scartate (duplicate nel DB): ${duplicates}</li>
+                        <li class="font-bold text-blue-600">Da caricare: ${dataToUpload.length}</li>
+                    </ul>
+                    <button id="confirm-upload-btn" class="mt-4 w-full bg-green-600 text-white font-semibold py-2 rounded-lg hover:bg-green-700">Conferma e Carica</button>`;
+                document.getElementById('confirm-upload-btn').addEventListener('click', handleUploadConfirmed);
+            };
+
+            const handleUploadConfirmed = async () => {
+                if (dataToUpload.length === 0) return;
+                showModal("Conferma Caricamento", `Stai per aggiungere ${dataToUpload.length} partite. Procedere?`, async () => {
+                    const matchesCollection = collection(db, "matches");
+                    const batch = writeBatch(db);
+                    dataToUpload.forEach(match => {
+                        const docId = `${match.data}_${match.lega}_${match.partita}_${match.tip}`.replace(/[^a-zA-Z0-9-_]/g, '');
+                        const docRef = doc(matchesCollection, docId);
+                        batch.set(docRef, match);
+                    });
+                    try {
+                        await batch.commit();
+                        await loadAllMatches();
+                        setupFilters(); // Re-setup sliders with new ranges
+                        populateFilters();
+                        applyFiltersAndRender();
+                        showModal("Successo", `${dataToUpload.length} partite caricate!`, () => {
+                            uploadPreview.classList.add('hidden');
+                            csvFileInput.value = '';
+                        });
+                    } catch (error) { showModal("Errore", `Errore durante il caricamento: ${error.message}`, () => {}); }
+                }, true);
+            };
+
+            const handleDeleteByDate = async () => {
+                const dateToDelete = deleteDateInput.value;
+                if (!dateToDelete) { showModal("Errore", "Seleziona una data.", () => {}); return; }
+                showModal("Conferma Cancellazione", `Cancellare tutte le partite del ${dateToDelete}? L'azione è irreversibile.`, async () => {
+                    const q = query(collection(db, "matches"), where("data", "==", dateToDelete));
+                    const snapshot = await getDocs(q);
+                    if(snapshot.empty) { showModal("Info", `Nessuna partita trovata per il ${dateToDelete}.`, () => {}); return; }
+                    const batch = writeBatch(db);
+                    snapshot.forEach(doc => batch.delete(doc.ref));
+                    await batch.commit();
+                    await loadAllMatches();
+                    setupFilters();
+                    populateFilters();
+                    applyFiltersAndRender();
+                    showModal("Successo", `Cancellate ${snapshot.size} partite.`, () => {});
+                }, true);
+            };
+
+            const handleClearAllData = async () => {
+                showModal("CONFERMA DEFINITIVA", `CANCELLARE TUTTO il database? L'azione non può essere annullata.`, async () => {
+                    const snapshot = await getDocs(collection(db, "matches"));
+                    if(snapshot.empty) { showModal("Info", "Database già vuoto.", () => {}); return; }
+                    const batch = writeBatch(db);
+                    snapshot.forEach(doc => batch.delete(doc.ref));
+                    await batch.commit();
+                    await loadAllMatches();
+                    setupFilters();
+                    populateFilters();
+                    applyFiltersAndRender();
+                    showModal("Successo", `Database azzerato. Cancellate ${snapshot.size} partite.`, () => {});
+                }, true);
+            };
+            
+            const exportToCsv = (data, filename) => {
+                if (data.length === 0) {
+                    showModal("Esportazione", "Nessun dato da esportare.", () => {});
+                    return;
+                }
+                const headers = ['data', 'lega', 'partita', 'risultato', 'probabilita', 'mercato', 'tip', 'quota', 'esito'];
+                const csv = Papa.unparse(data.map(d => ({...d, quota: String(d.quota).replace('.',',')})), { columns: headers });
+                const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement("a");
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                link.setAttribute("download", filename);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+
+            const handleSort = (e) => {
+                const newColumn = e.currentTarget.dataset.sort;
+                if (sortState.column === newColumn) {
+                    sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    sortState.column = newColumn;
+                    sortState.direction = ['data', 'probabilita', 'quota'].includes(newColumn) ? 'desc' : 'asc';
+                }
+                sortAndRenderMatches();
+            };
+
+            // --- INIT APP ---
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            matchDateInput.value = yesterday.toISOString().split('T')[0];
+            deleteDateInput.value = yesterday.toISOString().split('T')[0];
+
+            navButtons.forEach(btn => btn.addEventListener('click', () => showPage(btn.dataset.page)));
+            csvFileInput.addEventListener('change', handleFileUpload);
+            deleteByDateBtn.addEventListener('click', handleDeleteByDate);
+            clearDbBtn.addEventListener('click', handleClearAllData);
+            exportDbBtn.addEventListener('click', () => exportToCsv(allMatches, 'pronostici_bm_database.csv'));
+            exportFilteredBtn.addEventListener('click', () => exportToCsv(filteredMatches, 'pronostici_bm_filtrati.csv'));
+            sortableHeaders.forEach(header => header.addEventListener('click', handleSort));
+            
+            await loadAllMatches();
+            setupFilters();
+            populateFilters();
+            showPage('page-dashboard');
+        });
+        
+        function sortAndRenderMatches() {
+            const { column, direction } = sortState;
+            const sorted = [...filteredMatches].sort((a, b) => {
+                const valA = a[column];
+                const valB = b[column];
+                let comparison = 0;
+                if (typeof valA === 'string') {
+                    comparison = valA.localeCompare(valB);
+                } else {
+                    comparison = valA - valB;
+                }
+                return direction === 'asc' ? comparison : -comparison;
+            });
+            renderMatchList(sorted);
+            updateSortIcons();
+        }
+
+        function updateSortIcons() {
+            document.querySelectorAll('.sortable-header').forEach(header => {
+                const icon = header.querySelector('.sort-icon');
+                if (header.dataset.sort === sortState.column) {
+                    header.classList.add('active');
+                    if (sortState.direction === 'asc') {
+                        icon.classList.remove('fa-sort', 'fa-sort-down');
+                        icon.classList.add('fa-sort-up');
+                    } else {
+                        icon.classList.remove('fa-sort', 'fa-sort-up');
+                        icon.classList.add('fa-sort-down');
+                    }
+                } else {
+                    header.classList.remove('active');
+                    icon.classList.remove('fa-sort-up', 'fa-sort-down');
+                    icon.classList.add('fa-sort');
+                }
+            });
+        }
+
+        function calculateOutcome(match) {
+            const { mercato, tip, risultato } = match;
+            if (!risultato || !mercato || !tip) return 'N/D';
+            const scores = risultato.split('-').map(s => parseInt(s.trim()));
+            if (scores.length !== 2 || isNaN(scores[0]) || isNaN(scores[1])) return 'N/D';
+            const [homeScore, awayScore] = scores;
+            const totalGoals = homeScore + awayScore;
+            const normalizedTip = tip.toUpperCase().replace(/\s/g, '');
+
+            try {
+                switch (mercato.toLowerCase().trim()) {
+                    case '1x2':
+                        if (normalizedTip === '1' && homeScore > awayScore) return 'Vinto';
+                        if (normalizedTip === 'X' && homeScore === awayScore) return 'Vinto';
+                        if (normalizedTip === '2' && homeScore < awayScore) return 'Vinto';
+                        return 'Perso';
+                    case 'doppia chance':
+                        if (normalizedTip === '1X' && homeScore >= awayScore) return 'Vinto';
+                        if (normalizedTip === 'X2' && homeScore <= awayScore) return 'Vinto';
+                        if (normalizedTip === '12' && homeScore !== awayScore) return 'Vinto';
+                        return 'Perso';
+                    case 'numero di gol':
+                        const goalValue = parseFloat(normalizedTip.replace(/[+-]/, '').trim());
+                        if (normalizedTip.startsWith('+') && totalGoals > goalValue) return 'Vinto';
+                        if (normalizedTip.startsWith('-') && totalGoals < goalValue) return 'Vinto';
+                        return 'Perso';
+                    case 'gol/no gol':
+                        if ((normalizedTip === 'GOL' || normalizedTip === 'GG' || normalizedTip === 'SI') && (homeScore > 0 && awayScore > 0)) return 'Vinto';
+                        if ((normalizedTip === 'NOGOL' || normalizedTip === 'NG' || normalizedTip === 'NO') && (homeScore === 0 || awayScore === 0)) return 'Vinto';
+                        return 'Perso';
+                    default: return 'N/D';
+                }
+            } catch (e) { console.error("Error calculating outcome:", e); return 'Errore'; }
+        }
+
+        function renderStats(matches) {
+            const won = matches.filter(m => m.esito === 'Vinto').length;
+            const lost = matches.filter(m => m.esito === 'Perso').length;
+            const winRate = (won + lost) > 0 ? (won / (won + lost)) * 100 : 0;
+            const roiMatches = matches.filter(m => m.esito === 'Vinto' || m.esito === 'Perso');
+            const totalReturn = roiMatches.reduce((acc, m) => acc + (m.esito === 'Vinto' ? m.quota : 0), 0);
+            const roi = roiMatches.length > 0 ? ((totalReturn - roiMatches.length) / roiMatches.length) * 100 : 0;
+            document.getElementById('stats-container').innerHTML = `
+                <div class="bg-blue-100 text-blue-800 p-4 rounded-xl text-center"><h3 class="font-semibold text-sm">Partite</h3><p class="text-4xl font-bold mt-1">${matches.length}</p></div>
+                <div class="bg-green-100 text-green-800 p-4 rounded-xl text-center"><h3 class="font-semibold text-sm">Vinte</h3><p class="text-4xl font-bold mt-1">${won}</p></div>
+                <div class="bg-red-100 text-red-800 p-4 rounded-xl text-center"><h3 class="font-semibold text-sm">Perse</h3><p class="text-4xl font-bold mt-1">${lost}</p></div>
+                <div class="bg-gray-100 p-4 rounded-xl text-center"><h3 class="font-semibold text-sm">Win Rate</h3><p class="text-4xl font-bold mt-1 ${winRate >= 50 ? 'text-green-600' : 'text-red-600'}">${winRate.toFixed(1)}%</p></div>
+                <div class="bg-gray-100 p-4 rounded-xl text-center"><h3 class="font-semibold text-sm">ROI</h3><p class="text-4xl font-bold mt-1 ${roi >= 0 ? 'text-green-600' : 'text-red-600'}">${roi.toFixed(2)}%</p></div>`;
+        }
+
+        function renderMatchList(matches) {
+            const container = document.getElementById('match-list-body');
+            document.getElementById('filtered-count').textContent = matches.length;
+            if (matches.length === 0) {
+                container.innerHTML = '<tr><td colspan="9" class="text-center text-gray-500 p-4">Nessuna partita trovata.</td></tr>';
+                return;
+            }
+            container.innerHTML = matches.map(m => `
+                <tr class="hover:bg-gray-50">
+                    <td class="p-3 text-xs text-gray-600">${new Date(m.data + 'T00:00:00').toLocaleDateString('it-IT')}</td>
+                    <td class="p-3 text-sm text-gray-600 truncate" title="${m.lega}">${m.lega}</td>
+                    <td class="p-3 font-semibold truncate" title="${m.partita}">${m.partita}</td>
+                    <td class="p-3 text-sm text-gray-600">${m.mercato}</td>
+                    <td class="p-3 text-sm font-bold">${m.tip}</td>
+                    <td class="p-3 text-center font-bold">${m.risultato}</td>
+                    <td class="p-3 text-center text-sm">${m.probabilita}%</td>
+                    <td class="p-3 text-center text-sm">${m.quota.toFixed(2)}</td>
+                    <td class="p-3 text-center">
+                        <span class="px-3 py-1 text-xs font-bold rounded-full ${m.esito === 'Vinto' ? 'bg-green-500 text-white' : m.esito === 'Perso' ? 'bg-red-500 text-white' : 'bg-gray-500 text-white'}">${m.esito}</span>
+                    </td>
+                </tr>`).join('');
+        }
+        
+        function showModal(title, body, onConfirm, isConfirmation = false) {
+            const modal = document.getElementById('modal');
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-body').textContent = body;
+            const confirmBtn = document.getElementById('modal-confirm');
+            const cancelBtn = document.getElementById('modal-cancel');
+            confirmBtn.style.display = 'inline-flex';
+            cancelBtn.style.display = isConfirmation ? 'inline-flex' : 'none';
+            confirmBtn.className = `text-white px-4 py-2 rounded-lg font-semibold ${isConfirmation ? 'bg-red-600' : 'bg-blue-600'}`;
+            const confirmHandler = () => { onConfirm(); closeModal(); };
+            const closeHandler = () => closeModal();
+            const closeModal = () => {
+                modal.classList.add('hidden');
+                confirmBtn.removeEventListener('click', confirmHandler);
+                cancelBtn.removeEventListener('click', closeHandler);
+            };
+            confirmBtn.addEventListener('click', confirmHandler);
+            cancelBtn.addEventListener('click', closeHandler);
+            modal.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
+
