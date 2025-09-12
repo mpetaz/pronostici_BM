@@ -28,7 +28,7 @@
         }
         .sortable-header {
             cursor: pointer;
-            transition: background-color: 0.2s;
+            transition: background-color 0.2s;
         }
         .sortable-header:hover {
             background-color: #e5e7eb;
@@ -322,31 +322,32 @@
             
             const continentMap = { 'AM': 'Sud America', 'SA': 'Sud America', 'NA': 'Nord America', 'AS': 'Asia', 'AF': 'Africa', 'OC': 'Oceania' };
             const categorizeLeague = (leagueName) => {
-                // --- FINAL REFINED LOGIC FOR CATEGORIZATION ---
-                const mainLeagues = [
-                    'IT-Serie A', 'IT-Serie B', 'IT-Serie C', 
-                    'DE-Bundesliga', 
-                    'GB-Premier league', 'ENG-Premier league', 
-                    'ES-La Liga', 
-                    'FR-Ligue 1', 
-                    'CH-Super League', 
-                    'FI-Kakkonen', 
-                    'GR-Super League', 
-                    'PT-Liga Portugal'
+                 const preferentialLeagues = [
+                    'EU-BEL Challenger Pro League', 'EU-BGR First League', 'EU-CYP 1. Division', 'EU-CZE Chance Národní Liga',
+                    'EU-DEU Bundesliga', 'EU-DNK Superliga', 'EU-ENG League One', 'EU-ENG Premier League', 'EU-ENG Southern League',
+                    'EU-ESP La Liga', 'EU-FIN Kakkonen', 'EU-FIN Veikkausliiga', 'EU-ITA Serie A', 'EU-ITA Serie B',
+                    'EU-ITA Serie C Girone A', 'EU-ITA Serie C Girone B', 'EU-ITA Serie C Girone C', 'EU-MDA Super Liga',
+                    'EU-MKD First League', 'EU-NIR Championship', 'EU-NIR Premier Division', 'EU-NIR Premiership',
+                    'EU-NLD Eerste Divisie', 'EU-NLD Eredivisie', 'EU-NOR 2. Division - Group 1', 'EU-NOR Obos-Ligaen',
+                    'EU-POL Ekstraklasa', 'EU-POR Liga Portugal 2', 'EU-ROU Chance Liga', 'EU-ROU First Division',
+                    'EU-ROU Liga 2', 'EU-ROU Superliga', 'EU-RUS Premier League', 'EU-SRB Prva Liga', 'EU-SVK 2. Liga',
+                    'EU-SVK Niké Liga', 'EU-SVN 2. SNL', 'EU-SWE Ettan: North', 'EU-SWE Ettan: South', 'EU-SWE Superettan',
+                    'EU-TUR 1. Lig', 'EU-TUR Süper Lig', 'EU-UKR Persha Liga', 'EU-UKR Premier League', 'EU-WAL Premier League', 'EU-FRA Ligue 1'
                 ];
                 
                 if (leagueName.startsWith('EU-CL') || leagueName.startsWith('EU-EL') || leagueName.startsWith('EU-ECL')) return 'Coppe Europee';
-                if (leagueName.includes('Cup') || leagueName.includes('Coppa')) return 'Coppe Nazionali';
-                if (mainLeagues.includes(leagueName)) return 'Principali Europei';
+                if (leagueName.includes('WCQ')) return 'Qualificazioni Mondiali';
+                if (/(Cup|Coppa|Copa|Beker|Taça)/i.test(leagueName)) return 'Coppe Nazionali';
+                if (preferentialLeagues.includes(leagueName)) return 'Europa (Preferenziali)';
                 if (leagueName.endsWith('-NAZ')) return 'Nazionali';
                 
-                const continentMatch = leagueName.match(/^([A-Z]{2})-/);
-                if(continentMatch && continentMap[continentMatch[1]]) return continentMap[continentMatch[1]];
+                const continentMatch = leagueName.match(/^(AS|AF|NA|SA|OC)-/);
+                if (continentMatch) return 'Resto del Mondo';
 
                 const europeanPrefixes = ['EU-', 'AL-', 'AM-', 'AT-', 'AZ-', 'BY-', 'BE-', 'BA-', 'BG-', 'HR-', 'CY-', 'CZ-', 'DK-', 'EN-', 'EE-', 'FO-', 'FI-', 'FR-', 'GE-', 'DE-', 'GI-', 'GR-', 'HU-', 'IS-', 'IE-', 'IT-', 'KZ-', 'XK-', 'LV-', 'LT-', 'LU-', 'MT-', 'MD-', 'ME-', 'NL-', 'MK-', 'NI-', 'NO-', 'PL-', 'PT-', 'RO-', 'RU-', 'SM-', 'RS-', 'SK-', 'SI-', 'ES-', 'SE-', 'CH-', 'TR-', 'UA-', 'GB-'];
-                if(europeanPrefixes.some(prefix => leagueName.startsWith(prefix))) return 'Campionati Europei (Altri)';
+                if (europeanPrefixes.some(prefix => leagueName.startsWith(prefix))) return 'Europa (Altri)';
 
-                return 'Da Classificare'; // Fallback for any unhandled cases
+                return 'Non Classificati';
             };
 
             const populateFilters = () => {
@@ -359,7 +360,7 @@
                     return acc;
                 }, {});
 
-                const categoryOrder = ['Principali Europei', 'Coppe Europee', 'Coppe Nazionali', 'Campionati Europei (Altri)', 'Nazionali'];
+                const categoryOrder = ['Europa (Preferenziali)', 'Coppe Europee', 'Qualificazioni Mondiali', 'Coppe Nazionali', 'Europa (Altri)', 'Resto del Mondo', 'Nazionali', 'Non Classificati'];
                 const sortedCategories = Object.keys(categorized).sort((a, b) => {
                     const indexA = categoryOrder.indexOf(a);
                     const indexB = categoryOrder.indexOf(b);
@@ -771,4 +772,3 @@
     </script>
 </body>
 </html>
-
