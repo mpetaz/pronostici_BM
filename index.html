@@ -124,9 +124,9 @@
             <div id="page-dashboard" class="page max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <!-- Filters -->
                 <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-200 mb-8">
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-x-6 gap-y-4">
                         <!-- Column 1: Date & Sliders -->
-                        <div class="space-y-4">
+                        <div class="space-y-4 lg:row-span-2">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Periodo</label>
                                 <div class="flex flex-col space-y-2">
@@ -145,23 +145,22 @@
                                 <div id="odds-value" class="text-sm text-center mt-1"></div>
                             </div>
                         </div>
-                        <!-- Column 2: Leagues -->
-                        <div>
-                            <div class="flex justify-between items-center mb-1">
+                        <!-- Columns 2 & 3: Leagues and Tips -->
+                        <div class="lg:col-span-2">
+                             <div class="flex justify-between items-center mb-1">
                                 <label class="block text-sm font-medium text-gray-700">Leghe</label>
-                                <button id="reset-leagues-btn" class="text-xs text-blue-600 hover:underline font-semibold">Azzera</button>
+                                <button id="reset-leagues-btn" class="text-xs text-blue-600 hover:underline font-semibold">Azzera Leghe</button>
                             </div>
-                            <div id="league-filters-grid" class="grid grid-cols-1 md:grid-cols-2 gap-2 h-80">
+                            <div id="league-filters-grid" class="grid grid-cols-1 md:grid-cols-3 gap-2">
                                 <!-- League boxes will be dynamically created here -->
                             </div>
                         </div>
-                        <!-- Column 3: Tips -->
-                         <div>
-                            <div class="flex justify-between items-center mb-1">
+                         <div class="lg:col-span-3">
+                             <div class="flex justify-between items-center mb-1">
                                 <label class="block text-sm font-medium text-gray-700">Tips</label>
-                                <button id="reset-tips-btn" class="text-xs text-blue-600 hover:underline font-semibold">Azzera</button>
+                                <button id="reset-tips-btn" class="text-xs text-blue-600 hover:underline font-semibold">Azzera Tips</button>
                             </div>
-                            <div id="tip-filters-container" class="w-full h-80 p-2 border rounded-lg custom-scrollbar overflow-y-auto bg-gray-50 space-y-2">
+                            <div id="tip-filters-container" class="w-full p-2 border rounded-lg bg-gray-50 space-y-2">
                                 <!-- Tip categories will be injected here -->
                             </div>
                         </div>
@@ -229,18 +228,15 @@
             appId: "1:716119578109:web:01e8b9dad7b17c91d63594"
         };
         
-        // --- ROBUST INITIALIZATION ---
         let db;
         try {
             const app = initializeApp(firebaseConfig);
             db = getFirestore(app);
         } catch (error) {
             console.error("Firebase Initialization Error:", error);
-            // Show error immediately if initialization fails
             document.addEventListener('DOMContentLoaded', () => {
                  document.body.innerHTML = `<div class="p-4 bg-red-100 text-red-800">Errore critico durante l'inizializzazione di Firebase. Controlla la console.</div>`;
             });
-            // Stop script execution
             throw new Error("Firebase init failed");
         }
         
@@ -326,7 +322,6 @@
                 renderStats(filteredMatches);
             };
             
-            const continentMap = { 'AM': 'Sud America', 'SA': 'Sud America', 'NA': 'Nord America', 'AS': 'Asia', 'AF': 'Africa', 'OC': 'Oceania' };
             const categorizeLeague = (leagueName) => {
                  const preferentialLeagues = [
                     'EU-BEL Challenger Pro League', 'EU-BGR First League', 'EU-CYP 1. Division', 'EU-CZE Chance Národní Liga',
@@ -342,10 +337,9 @@
                 ];
                 
                 if (leagueName.startsWith('EU-CL') || leagueName.startsWith('EU-EL') || leagueName.startsWith('EU-ECL')) return 'Coppe Europee';
-                if (leagueName.includes('WCQ')) return 'Qualificazioni Mondiali';
+                if (leagueName.includes('WCQ') || leagueName.endsWith('-NAZ')) return 'Competizioni Nazionali';
                 if (/(Cup|Coppa|Copa|Beker|Taça)/i.test(leagueName)) return 'Coppe Nazionali';
                 if (preferentialLeagues.includes(leagueName)) return 'Europa (Preferenziali)';
-                if (leagueName.endsWith('-NAZ')) return 'Qualificazioni Mondiali'; 
                 
                 const continentMatch = leagueName.match(/^(AS|AF|NA|SA|OC)-/);
                 if (continentMatch) return 'Resto del Mondo';
@@ -366,14 +360,14 @@
                     return acc;
                 }, {});
 
-                const categoryOrder = ['Europa (Preferenziali)', 'Europa (Altri)', 'Resto del Mondo', 'Coppe Europee', 'Qualificazioni Mondiali', 'Coppe Nazionali', 'Non Classificati'];
-                leagueFiltersGrid.innerHTML = ''; // Clear the grid
+                const categoryOrder = ['Europa (Preferenziali)', 'Europa (Altri)', 'Resto del Mondo', 'Coppe Europee', 'Competizioni Nazionali', 'Coppe Nazionali', 'Non Classificati'];
+                leagueFiltersGrid.innerHTML = ''; 
 
                 categoryOrder.forEach(category => {
                     if (!categorized[category] || categorized[category].length === 0) return;
 
                     const box = document.createElement('div');
-                    box.className = 'bg-gray-50 border rounded-lg p-2 flex flex-col';
+                    box.className = 'bg-gray-50 border rounded-lg p-2 flex flex-col h-40'; // Fixed height for boxes
 
                     const leaguesInCategory = categorized[category].sort().map(league => `
                         <label class="flex items-center space-x-2 p-1 rounded hover:bg-blue-50 cursor-pointer">
