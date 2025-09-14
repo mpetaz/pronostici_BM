@@ -124,44 +124,52 @@
             <div id="page-dashboard" class="page max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <!-- Filters -->
                 <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-200 mb-8">
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-x-6 gap-y-4">
-                        <!-- Column 1: Date & Sliders -->
-                        <div class="space-y-4 lg:row-span-2">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Periodo</label>
-                                <div class="flex flex-col space-y-2">
-                                    <input type="date" id="filter-date-start" class="w-full p-2 border rounded-lg">
-                                    <input type="date" id="filter-date-end" class="w-full p-2 border rounded-lg">
-                                </div>
-                            </div>
-                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Probabilità (%)</label>
-                                <div id="probability-slider" class="mt-4"></div>
-                                <div id="probability-value" class="text-sm text-center mt-1"></div>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Quota</label>
-                                <div id="odds-slider" class="mt-4"></div>
-                                <div id="odds-value" class="text-sm text-center mt-1"></div>
-                            </div>
+                     <div class="flex flex-col md:flex-row gap-4 mb-4 items-center">
+                        <div class="relative flex-grow w-full">
+                            <input type="text" id="search-input" placeholder="Cerca lega o squadra..." class="w-full p-2 pl-10 border rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
                         </div>
-                        <!-- Columns 2 & 3: Leagues and Tips -->
-                        <div class="lg:col-span-2">
-                             <div class="flex justify-between items-center mb-1">
+                        <div class="flex items-center gap-2 w-full md:w-auto">
+                            <label class="text-sm font-medium text-gray-700">Periodo:</label>
+                            <input type="date" id="filter-date-start" class="p-2 border rounded-lg">
+                            <input type="date" id="filter-date-end" class="p-2 border rounded-lg">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- LEFT COLUMN: Leagues -->
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
                                 <label class="block text-sm font-medium text-gray-700">Leghe</label>
                                 <button id="reset-leagues-btn" class="text-xs text-blue-600 hover:underline font-semibold">Azzera Leghe</button>
                             </div>
-                            <div id="league-filters-grid" class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                            <div id="league-filters-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                 <!-- League boxes will be dynamically created here -->
                             </div>
                         </div>
-                         <div class="lg:col-span-3">
-                             <div class="flex justify-between items-center mb-1">
-                                <label class="block text-sm font-medium text-gray-700">Tips</label>
-                                <button id="reset-tips-btn" class="text-xs text-blue-600 hover:underline font-semibold">Azzera Tips</button>
-                            </div>
-                            <div id="tip-filters-container" class="w-full p-2 border rounded-lg bg-gray-50 space-y-2">
-                                <!-- Tip categories will be injected here -->
+                        <!-- RIGHT COLUMN: Sliders & Tips -->
+                        <div class="space-y-4">
+                            <!-- Sliders -->
+                             <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Probabilità (%)</label>
+                                    <div id="probability-slider" class="mt-4 mx-2"></div>
+                                    <div id="probability-value" class="text-xs text-center mt-1"></div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Quota</label>
+                                    <div id="odds-slider" class="mt-4 mx-2"></div>
+                                    <div id="odds-value" class="text-xs text-center mt-1"></div>
+                                </div>
+                             </div>
+                            <!-- Tips -->
+                            <div class="pt-2">
+                                 <div class="flex justify-between items-center mb-1">
+                                    <label class="block text-sm font-medium text-gray-700">Tips</label>
+                                    <button id="reset-tips-btn" class="text-xs text-blue-600 hover:underline font-semibold">Azzera Tips</button>
+                                </div>
+                                <div id="tip-filters-container" class="w-full p-2 border rounded-lg bg-gray-50">
+                                    <!-- Tip categories will be injected here -->
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -269,6 +277,7 @@
             const resetTipsBtn = document.getElementById('reset-tips-btn');
             const loadingOverlay = document.getElementById('loading-overlay');
             const sortableHeaders = document.querySelectorAll('.sortable-header');
+            const searchInput = document.getElementById('search-input');
 
             // --- CORE FUNCTIONS ---
 
@@ -291,7 +300,12 @@
                 const matchesCollection = collection(db, "matches");
                 try {
                     const snapshot = await getDocs(matchesCollection);
-                    allMatches = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    allMatches = snapshot.docs.map(doc => {
+                        const data = doc.data();
+                        // --- DATA NORMALIZATION ON LOAD ---
+                        data.lega = normalizeLega(data.lega);
+                        return { id: doc.id, ...data };
+                    });
                 } catch(e) {
                     console.error("Error loading matches: ", e);
                     showModal("Errore di Caricamento", "Impossibile caricare i dati dal database.", () => {});
@@ -307,6 +321,7 @@
                 const selectedTips = Array.from(tipFiltersContainer.querySelectorAll('.tip-button.active')).map(btn => btn.dataset.tip);
                 const [minProb, maxProb] = probabilitySliderEl.noUiSlider.get();
                 const [minOdds, maxOdds] = oddsSliderEl.noUiSlider.get();
+                const searchTerm = searchInput.value.toLowerCase();
 
                 filteredMatches = allMatches.filter(m => {
                     if (startDate && m.data < startDate) return false;
@@ -315,6 +330,7 @@
                     if (selectedTips.length > 0 && !selectedTips.includes(m.tip)) return false;
                     if (m.probabilita < minProb || m.probabilita > maxProb) return false;
                     if (m.quota < minOdds || m.quota > maxOdds) return false;
+                    if (searchTerm && !m.partita.toLowerCase().includes(searchTerm) && !m.lega.toLowerCase().includes(searchTerm)) return false;
                     return true;
                 });
                 
@@ -322,21 +338,28 @@
                 renderStats(filteredMatches);
             };
             
+            const normalizeLega = (lega) => {
+                if (!lega) return '';
+                return lega.replace(': Girone', ' Girone').replace('EU-PRT', 'EU-POR');
+            };
+            
             const categorizeLeague = (leagueName) => {
                  const preferentialLeagues = [
-                    'EU-BEL Challenger Pro League', 'EU-BGR First League', 'EU-CYP 1. Division', 'EU-CZE Chance Národní Liga',
-                    'EU-DEU Bundesliga', 'EU-DNK Superliga', 'EU-ENG League One', 'EU-ENG Premier League', 'EU-ENG Southern League',
-                    'EU-ESP La Liga', 'EU-FIN Kakkonen', 'EU-FIN Veikkausliiga', 'EU-ITA Serie A', 'EU-ITA Serie B',
-                    'EU-ITA Serie C Girone A', 'EU-ITA Serie C Girone B', 'EU-ITA Serie C Girone C', 'EU-MDA Super Liga',
-                    'EU-MKD First League', 'EU-NIR Championship', 'EU-NIR Premier Division', 'EU-NIR Premiership',
-                    'EU-NLD Eerste Divisie', 'EU-NLD Eredivisie', 'EU-NOR 2. Division - Group 1', 'EU-NOR Obos-Ligaen',
-                    'EU-POL Ekstraklasa', 'EU-ROU Chance Liga', 'EU-ROU First Division',
-                    'EU-ROU Liga 2', 'EU-ROU Superliga', 'EU-RUS Premier League', 'EU-SRB Prva Liga', 'EU-SVK 2. Liga',
-                    'EU-SVK Niké Liga', 'EU-SVN 2. SNL', 'EU-SWE Ettan: North', 'EU-SWE Ettan: South', 'EU-SWE Superettan',
-                    'EU-TUR 1. Lig', 'EU-TUR Süper Lig', 'EU-UKR Persha Liga', 'EU-UKR Premier League', 'EU-WAL Premier League', 'EU-FRA Ligue 1'
+                    'EU-AUT 2. Liga', 'EU-BEL Challenger Pro League', 'EU-BGR First League', 'EU-CYP 1. Division', 
+                    'EU-CZE Chance Národní Liga', 'EU-DEU Bundesliga', 'EU-DNK First Division', 'EU-DNK Superliga', 
+                    'EU-ENG League One', 'EU-ENG Premier League', 'EU-ENG Southern League', 'EU-ESP La Liga', 'EU-ESP La Liga 2', 
+                    'EU-FIN Kakkonen', 'EU-FIN Veikkausliiga', 'EU-FIN Ykkösliiga', 'EU-FRA Ligue 1', 'EU-FRA Ligue 2', 
+                    'EU-HRV 2. HNL', 'EU-IRL First Division', 'EU-ITA Serie A', 'EU-ITA Serie B', 'EU-ITA Serie C Girone A', 
+                    'EU-ITA Serie C Girone B', 'EU-ITA Serie C Girone C', 'EU-LTU A Lyga', 'EU-LTU First Liga', 'EU-MDA Super Liga', 
+                    'EU-MKD First League', 'EU-NIR Championship', 'EU-NIR Premier Division', 'EU-NIR Premiership', 
+                    'EU-NLD Eerste Divisie', 'EU-NLD Eredivisie', 'EU-NOR OBOS-Ligaen', 'EU-NOR 2. Division - Group 1', 
+                    'EU-POL Ekstraklasa', 'EU-POR Liga Portugal', 'EU-POR Liga Portugal 2', 'EU-ROU Chance Liga', 'EU-ROU First Division', 
+                    'EU-ROU Liga 2', 'EU-ROU Superliga', 'EU-RUS Premier League', 'EU-SCO League One', 'EU-SRB Prva Liga', 
+                    'EU-SVK Niké Liga', 'EU-SVN 2. SNL', 'EU-SWE Ettan: North', 'EU-SWE Ettan: South', 'EU-SWE Superettan', 
+                    'EU-TUR 1. Lig', 'EU-TUR Süper Lig', 'EU-UKR Persha Liga', 'EU-UKR Premier League', 'EU-WAL Premier League'
                 ];
                 
-                if (leagueName.startsWith('EU-CL') || leagueName.startsWith('EU-EL') || leagueName.startsWith('EU-ECL')) return 'Coppe Europee';
+                if (leagueName.startsWith('EU-Champions League') || leagueName.startsWith('EU-Europa Conference League') || leagueName.startsWith('EU-Europa League')) return 'Coppe Europee';
                 if (leagueName.includes('WCQ') || leagueName.endsWith('-NAZ')) return 'Competizioni Nazionali';
                 if (/(Cup|Coppa|Copa|Beker|Taça)/i.test(leagueName)) return 'Coppe Nazionali';
                 if (preferentialLeagues.includes(leagueName)) return 'Europa (Preferenziali)';
@@ -367,7 +390,7 @@
                     if (!categorized[category] || categorized[category].length === 0) return;
 
                     const box = document.createElement('div');
-                    box.className = 'bg-gray-50 border rounded-lg p-2 flex flex-col h-40'; // Fixed height for boxes
+                    box.className = 'bg-gray-50 border rounded-lg p-2 flex flex-col h-48'; 
 
                     const leaguesInCategory = categorized[category].sort().map(league => `
                         <label class="flex items-center space-x-2 p-1 rounded hover:bg-blue-50 cursor-pointer">
@@ -376,7 +399,7 @@
                         </label>`).join('');
                     
                     box.innerHTML = `
-                        <h4 class="font-semibold text-xs uppercase text-gray-500 mb-1">
+                        <h4 class="font-semibold text-xs uppercase text-gray-500 mb-1 sticky top-0 bg-gray-50 py-1">
                            <label class="flex items-center space-x-2 cursor-pointer">
                                 <input type="checkbox" class="category-select-all form-checkbox h-4 w-4 rounded text-blue-600 border-gray-300 focus:ring-blue-500">
                                 <span>${category}</span>
@@ -456,7 +479,7 @@
                 probabilitySliderEl.noUiSlider.on('update', (v) => { document.getElementById('probability-value').innerText = `${v[0]}% - ${v[1]}%`; });
                 oddsSliderEl.noUiSlider.on('update', (v) => { document.getElementById('odds-value').innerText = `${parseFloat(v[0]).toFixed(2)} - ${parseFloat(v[1]).toFixed(2)}`; });
                 
-                [filterDateStart, filterDateEnd].forEach(el => el.addEventListener('change', applyFiltersAndRender));
+                [filterDateStart, filterDateEnd, searchInput].forEach(el => el.addEventListener('input', applyFiltersAndRender));
                 probabilitySliderEl.noUiSlider.on('set', applyFiltersAndRender); 
                 oddsSliderEl.noUiSlider.on('set', applyFiltersAndRender);
                 
@@ -472,6 +495,7 @@
                 resetFiltersBtn.addEventListener('click', () => {
                     filterDateStart.value = '';
                     filterDateEnd.value = '';
+                    searchInput.value = '';
                     resetLeaguesBtn.click();
                     resetTipsBtn.click();
                     probabilitySliderEl.noUiSlider.set([minProb, maxProb]);
@@ -505,7 +529,7 @@
                     }
                     const matchData = {
                         data: matchDate,
-                        lega: String(row.Lega).trim(),
+                        lega: normalizeLega(String(row.Lega).trim()),
                         partita: String(row.Partita).trim(),
                         risultato: String(row.Risultato).trim(),
                         probabilita: parseInt(String(row['Probabilità']).replace('%', '').trim()) || 0,
