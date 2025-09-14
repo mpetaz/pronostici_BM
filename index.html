@@ -390,7 +390,7 @@
                     if (!categorized[category] || categorized[category].length === 0) return;
 
                     const box = document.createElement('div');
-                    box.className = 'bg-gray-50 border rounded-lg p-2 flex flex-col h-48'; 
+                    box.className = 'league-category-box bg-gray-50 border rounded-lg p-2 flex flex-col h-48'; 
 
                     const leaguesInCategory = categorized[category].sort().map(league => `
                         <label class="flex items-center space-x-2 p-1 rounded hover:bg-blue-50 cursor-pointer">
@@ -417,7 +417,7 @@
                 leagueFiltersGrid.querySelectorAll('.category-select-all').forEach(masterCb => {
                     masterCb.addEventListener('change', (e) => {
                         const isChecked = e.target.checked;
-                        const categoryDiv = e.target.closest('.bg-gray-50');
+                        const categoryDiv = e.target.closest('.league-category-box');
                         categoryDiv.querySelectorAll('.league-checkbox').forEach(leagueCb => {
                             leagueCb.checked = isChecked;
                         });
@@ -433,17 +433,17 @@
                     'Gol/No Gol': ['GOL', 'NO GOL']
                 };
                 
-                tipFiltersContainer.innerHTML = Object.entries(predefinedTips).map(([market, tips]) => {
+                tipFiltersContainer.innerHTML = `<div class="grid grid-cols-2 md:grid-cols-4 gap-4">${Object.entries(predefinedTips).map(([market, tips]) => {
                     const tipButtons = tips.map(tip => `
-                        <button data-tip="${tip}" class="tip-button px-3 py-1 text-sm rounded-full border border-gray-300 bg-white hover:bg-gray-100 transition-colors">${tip}</button>
+                        <button data-tip="${tip}" class="tip-button w-full px-2 py-1 text-xs rounded-full border border-gray-300 bg-white hover:bg-gray-100 transition-colors">${tip}</button>
                     `).join('');
                     return `
                         <div>
-                             <h4 class="font-semibold text-xs uppercase text-gray-500 py-1 px-1">${market}</h4>
-                             <div class="flex flex-wrap gap-2 p-1">${tipButtons}</div>
+                             <h4 class="font-semibold text-xs uppercase text-gray-500 mb-2">${market}</h4>
+                             <div class="flex flex-wrap gap-2">${tipButtons}</div>
                         </div>
                     `;
-                }).join('');
+                }).join('')}</div>`;
 
 
                 tipFiltersContainer.querySelectorAll('.tip-button').forEach(btn => {
