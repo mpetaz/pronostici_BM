@@ -122,6 +122,9 @@
 
             <!-- Pagina Dashboard Statistica -->
             <div id="page-dashboard" class="page max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <!-- Sticky Stats -->
+                <div id="stats-container" class="sticky top-0 z-10 bg-gray-50/80 backdrop-blur-sm py-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8"></div>
+                
                 <!-- Filters -->
                 <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-200 mb-8">
                      <div class="flex flex-col md:flex-row gap-4 mb-4 items-center">
@@ -133,6 +136,27 @@
                             <label class="text-sm font-medium text-gray-700">Periodo:</label>
                             <input type="date" id="filter-date-start" class="p-2 border rounded-lg">
                             <input type="date" id="filter-date-end" class="p-2 border rounded-lg">
+                        </div>
+                    </div>
+                    <!-- Saved Filters Section -->
+                    <div class="border-t border-b border-gray-200 my-4 py-4">
+                        <h4 class="text-sm font-medium text-gray-700 mb-2">Filtri Personalizzati</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                            <div>
+                                <label for="saved-filters-select" class="block text-xs font-medium text-gray-600">Carica una strategia</label>
+                                <div class="flex gap-2">
+                                    <select id="saved-filters-select" class="w-full p-2 border rounded-lg text-sm bg-gray-50"></select>
+                                    <button id="load-filter-btn" class="bg-blue-600 text-white px-3 py-2 rounded-lg font-semibold text-sm">Carica</button>
+                                    <button id="delete-filter-btn" class="bg-red-500 text-white px-3 py-2 rounded-lg font-semibold text-sm"><i class="fa-solid fa-trash"></i></button>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="new-filter-name" class="block text-xs font-medium text-gray-600">Salva strategia attuale</label>
+                                <input type="text" id="new-filter-name" placeholder="Nome della strategia..." class="w-full p-2 border rounded-lg text-sm">
+                            </div>
+                            <div>
+                                <button id="save-filter-btn" class="w-full bg-green-600 text-white px-4 py-2 rounded-lg font-semibold text-sm">Salva Strategia</button>
+                            </div>
                         </div>
                     </div>
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -182,8 +206,6 @@
                         </button>
                     </div>
                 </div>
-                <!-- Stats -->
-                <div id="stats-container" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8"></div>
                 <!-- Match List -->
                 <div id="match-list-container" class="bg-white p-6 rounded-2xl shadow-md border border-gray-200">
                     <h3 class="text-xl font-bold mb-4">Partite filtrate (<span id="filtered-count">0</span>)</h3>
@@ -225,7 +247,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
-        import { getFirestore, collection, getDocs, writeBatch, query, where, doc } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, writeBatch, query, where, doc, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
         
         const firebaseConfig = {
             apiKey: "AIzaSyCWay4QfY1bxj4yBLnho3Zn02_NaxzbVRQ",
@@ -251,6 +273,7 @@
         let allMatches = [];
         let dataToUpload = [];
         let filteredMatches = [];
+        let savedFilters = [];
         let sortState = { column: 'data', direction: 'desc' };
 
         document.addEventListener('DOMContentLoaded', async () => {
@@ -278,6 +301,11 @@
             const loadingOverlay = document.getElementById('loading-overlay');
             const sortableHeaders = document.querySelectorAll('.sortable-header');
             const searchInput = document.getElementById('search-input');
+            const savedFiltersSelect = document.getElementById('saved-filters-select');
+            const loadFilterBtn = document.getElementById('load-filter-btn');
+            const deleteFilterBtn = document.getElementById('delete-filter-btn');
+            const newFilterNameInput = document.getElementById('new-filter-name');
+            const saveFilterBtn = document.getElementById('save-filter-btn');
 
             // --- CORE FUNCTIONS ---
 
@@ -302,7 +330,6 @@
                     const snapshot = await getDocs(matchesCollection);
                     allMatches = snapshot.docs.map(doc => {
                         const data = doc.data();
-                        // --- DATA NORMALIZATION ON LOAD ---
                         data.lega = normalizeLega(data.lega);
                         return { id: doc.id, ...data };
                     });
@@ -417,7 +444,7 @@
                 leagueFiltersGrid.querySelectorAll('.category-select-all').forEach(masterCb => {
                     masterCb.addEventListener('change', (e) => {
                         const isChecked = e.target.checked;
-                        const categoryDiv = e.target.closest('.league-category-box');
+                        const categoryDiv = e.target.closest('.league-category-box'); // BUG FIX
                         categoryDiv.querySelectorAll('.league-checkbox').forEach(leagueCb => {
                             leagueCb.checked = isChecked;
                         });
@@ -641,6 +668,91 @@
                 }
                 sortAndRenderMatches();
             };
+            
+             // --- SAVED FILTERS LOGIC ---
+            const loadSavedFilters = async () => {
+                const presetsCollection = collection(db, "presets");
+                const snapshot = await getDocs(presetsCollection);
+                savedFilters = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                savedFiltersSelect.innerHTML = '<option value="">Seleziona strategia...</option>' + savedFilters.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
+            };
+
+            const handleSaveFilter = async () => {
+                const filterName = newFilterNameInput.value.trim();
+                if (!filterName) {
+                    showModal("Errore", "Inserisci un nome per la strategia.", () => {});
+                    return;
+                }
+                const filterState = {
+                    leagues: Array.from(leagueFiltersGrid.querySelectorAll('input.league-checkbox:checked')).map(cb => cb.value),
+                    tips: Array.from(tipFiltersContainer.querySelectorAll('.tip-button.active')).map(btn => btn.dataset.tip),
+                    prob: probabilitySliderEl.noUiSlider.get(),
+                    odds: oddsSliderEl.noUiSlider.get(),
+                    startDate: filterDateStart.value,
+                    endDate: filterDateEnd.value
+                };
+                try {
+                    await addDoc(collection(db, "presets"), { name: filterName, state: filterState });
+                    showModal("Successo", `Strategia "${filterName}" salvata con successo!`, () => {});
+                    newFilterNameInput.value = '';
+                    await loadSavedFilters();
+                } catch(e) {
+                    showModal("Errore", `Impossibile salvare la strategia: ${e.message}`, () => {});
+                }
+            };
+
+            const handleLoadFilter = () => {
+                const selectedId = savedFiltersSelect.value;
+                if (!selectedId) return;
+                const selectedFilter = savedFilters.find(f => f.id === selectedId);
+                if (!selectedFilter) return;
+
+                const { state } = selectedFilter;
+                
+                // Reset all filters first
+                resetFiltersBtn.click();
+                setTimeout(() => { // Timeout to allow reset to apply visually
+                    // Apply saved state
+                    filterDateStart.value = state.startDate || '';
+                    filterDateEnd.value = state.endDate || '';
+                    probabilitySliderEl.noUiSlider.set(state.prob);
+                    oddsSliderEl.noUiSlider.set(state.odds);
+                    
+                    leagueFiltersGrid.querySelectorAll('input.league-checkbox').forEach(cb => {
+                        cb.checked = state.leagues.includes(cb.value);
+                    });
+
+                    tipFiltersContainer.querySelectorAll('.tip-button').forEach(btn => {
+                        if (state.tips.includes(btn.dataset.tip)) {
+                            btn.classList.add('active');
+                        } else {
+                            btn.classList.remove('active');
+                        }
+                    });
+
+                    applyFiltersAndRender();
+                }, 100);
+            };
+
+            const handleDeleteFilter = async () => {
+                 const selectedId = savedFiltersSelect.value;
+                if (!selectedId) {
+                    showModal("Attenzione", "Seleziona una strategia da eliminare.", () => {});
+                    return;
+                }
+                const selectedFilter = savedFilters.find(f => f.id === selectedId);
+
+                showModal(`Conferma Eliminazione`, `Sei sicuro di voler eliminare la strategia "${selectedFilter.name}"?`, async () => {
+                    try {
+                        await deleteDoc(doc(db, "presets", selectedId));
+                        showModal("Successo", "Strategia eliminata.", () => {});
+                        await loadSavedFilters();
+                    } catch(e) {
+                        showModal("Errore", `Impossibile eliminare la strategia: ${e.message}`, () => {});
+                    }
+                }, true);
+            };
+
 
             // --- INIT APP ---
             const yesterday = new Date();
@@ -655,10 +767,14 @@
             exportDbBtn.addEventListener('click', () => exportToCsv(allMatches, 'pronostici_bm_database.csv'));
             exportFilteredBtn.addEventListener('click', () => exportToCsv(filteredMatches, 'pronostici_bm_filtrati.csv'));
             sortableHeaders.forEach(header => header.addEventListener('click', handleSort));
+            saveFilterBtn.addEventListener('click', handleSaveFilter);
+            loadFilterBtn.addEventListener('click', handleLoadFilter);
+            deleteFilterBtn.addEventListener('click', handleDeleteFilter);
             
             await loadAllMatches();
             setupFilters();
             populateFilters();
+            await loadSavedFilters();
             showPage('page-dashboard');
         });
         
@@ -795,4 +911,3 @@
     </script>
 </body>
 </html>
-
