@@ -41,6 +41,17 @@
             opacity: 1;
             color: #3b82f6;
         }
+        .favorite-star {
+            cursor: pointer;
+            color: #d1d5db; /* Grigio per non preferito */
+            transition: color 0.2s, transform 0.2s;
+        }
+        .favorite-star.is-favorite {
+            color: #f59e0b; /* Giallo per preferito */
+        }
+        .favorite-star:hover {
+            transform: scale(1.2);
+        }
     </style>
 </head>
 <body class="h-full text-gray-800">
@@ -164,7 +175,10 @@
                         <div>
                             <div class="flex justify-between items-center mb-1">
                                 <label class="block text-sm font-medium text-gray-700">Leghe</label>
-                                <button id="reset-leagues-btn" class="text-xs text-blue-600 hover:underline font-semibold">Azzera Leghe</button>
+                                <div>
+                                    <button id="update-favorites-btn" class="text-xs text-green-600 hover:underline font-semibold mr-4">Aggiorna Preferiti</button>
+                                    <button id="reset-leagues-btn" class="text-xs text-blue-600 hover:underline font-semibold">Azzera Leghe</button>
+                                </div>
                             </div>
                             <div id="league-filters-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                 <!-- League boxes will be dynamically created here -->
@@ -247,7 +261,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
-        import { getFirestore, collection, getDocs, writeBatch, query, where, doc, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, writeBatch, query, where, doc, addDoc, deleteDoc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
         
         const firebaseConfig = {
             apiKey: "AIzaSyCWay4QfY1bxj4yBLnho3Zn02_NaxzbVRQ",
@@ -274,6 +288,8 @@
         let dataToUpload = [];
         let filteredMatches = [];
         let savedFilters = [];
+        let favoriteLeagues = [];
+        let stagedFavoriteLeagues = [];
         let sortState = { column: 'data', direction: 'desc' };
 
         document.addEventListener('DOMContentLoaded', async () => {
@@ -306,6 +322,7 @@
             const deleteFilterBtn = document.getElementById('delete-filter-btn');
             const newFilterNameInput = document.getElementById('new-filter-name');
             const saveFilterBtn = document.getElementById('save-filter-btn');
+            const updateFavoritesBtn = document.getElementById('update-favorites-btn');
 
             // --- CORE FUNCTIONS ---
 
@@ -371,31 +388,16 @@
             };
             
             const categorizeLeague = (leagueName) => {
-                 const preferentialLeagues = [
-                    'EU-AUT 2. Liga', 'EU-BEL Challenger Pro League', 'EU-BGR First League', 'EU-CYP 1. Division', 
-                    'EU-CZE Chance Národní Liga', 'EU-DEU Bundesliga', 'EU-DNK First Division', 'EU-DNK Superliga', 
-                    'EU-ENG League One', 'EU-ENG Premier League', 'EU-ENG Southern League', 'EU-ESP La Liga', 'EU-ESP La Liga 2', 
-                    'EU-FIN Kakkonen', 'EU-FIN Veikkausliiga', 'EU-FIN Ykkösliiga', 'EU-FRA Ligue 1', 'EU-FRA Ligue 2', 
-                    'EU-HRV 2. HNL', 'EU-IRL First Division', 'EU-ITA Serie A', 'EU-ITA Serie B', 'EU-ITA Serie C Girone A', 
-                    'EU-ITA Serie C Girone B', 'EU-ITA Serie C Girone C', 'EU-LTU A Lyga', 'EU-LTU First Liga', 'EU-MDA Super Liga', 
-                    'EU-MKD First League', 'EU-NIR Championship', 'EU-NIR Premier Division', 'EU-NIR Premiership', 
-                    'EU-NLD Eerste Divisie', 'EU-NLD Eredivisie', 'EU-NOR OBOS-Ligaen', 'EU-NOR 2. Division - Group 1', 
-                    'EU-POL Ekstraklasa', 'EU-POR Liga Portugal', 'EU-POR Liga Portugal 2', 'EU-ROU Chance Liga', 'EU-ROU First Division', 
-                    'EU-ROU Liga 2', 'EU-ROU Superliga', 'EU-RUS Premier League', 'EU-SCO League One', 'EU-SRB Prva Liga', 
-                    'EU-SVK Niké Liga', 'EU-SVN 2. SNL', 'EU-SWE Ettan: North', 'EU-SWE Ettan: South', 'EU-SWE Superettan', 
-                    'EU-TUR 1. Lig', 'EU-TUR Süper Lig', 'EU-UKR Persha Liga', 'EU-UKR Premier League', 'EU-WAL Premier League'
-                ];
-                
-                if (leagueName.startsWith('EU-Champions League') || leagueName.startsWith('EU-Europa Conference League') || leagueName.startsWith('EU-Europa League')) return 'Coppe Europee';
+                if (favoriteLeagues.includes(leagueName)) return '⭐ Preferiti';
+                if (leagueName.startsWith('EU-CL') || leagueName.startsWith('EU-EL') || leagueName.startsWith('EU-ECL')) return 'Coppe Europee';
                 if (leagueName.includes('WCQ') || leagueName.endsWith('-NAZ')) return 'Competizioni Nazionali';
                 if (/(Cup|Coppa|Copa|Beker|Taça)/i.test(leagueName)) return 'Coppe Nazionali';
-                if (preferentialLeagues.includes(leagueName)) return 'Europa (Preferenziali)';
                 
                 const continentMatch = leagueName.match(/^(AS|AF|NA|SA|OC)-/);
                 if (continentMatch) return 'Resto del Mondo';
 
                 const europeanPrefixes = ['EU-', 'AL-', 'AT-', 'AZ-', 'BY-', 'BE-', 'BA-', 'BG-', 'HR-', 'CY-', 'CZ-', 'DK-', 'EN-', 'EE-', 'FO-', 'FI-', 'FR-', 'GE-', 'DE-', 'GI-', 'GR-', 'HU-', 'IS-', 'IE-', 'IT-', 'KZ-', 'XK-', 'LV-', 'LT-', 'LU-', 'MT-', 'MD-', 'ME-', 'NL-', 'MK-', 'NI-', 'NO-', 'PL-', 'PT-', 'RO-', 'RU-', 'SM-', 'RS-', 'SK-', 'SI-', 'ES-', 'SE-', 'CH-', 'TR-', 'UA-', 'GB-'];
-                if (europeanPrefixes.some(prefix => leagueName.startsWith(prefix))) return 'Europa (Altri)';
+                if (europeanPrefixes.some(prefix => leagueName.startsWith(prefix))) return 'Europa';
 
                 return 'Non Classificati';
             };
@@ -410,20 +412,23 @@
                     return acc;
                 }, {});
 
-                const categoryOrder = ['Europa (Preferenziali)', 'Europa (Altri)', 'Resto del Mondo', 'Coppe Europee', 'Competizioni Nazionali', 'Coppe Nazionali', 'Non Classificati'];
+                const categoryOrder = ['⭐ Preferiti', 'Europa', 'Resto del Mondo', 'Coppe Europee', 'Competizioni Nazionali', 'Coppe Nazionali', 'Non Classificati'];
                 leagueFiltersGrid.innerHTML = ''; 
 
                 categoryOrder.forEach(category => {
                     if (!categorized[category] || categorized[category].length === 0) return;
 
                     const box = document.createElement('div');
-                    box.className = 'league-category-box bg-gray-50 border rounded-lg p-2 flex flex-col h-48'; 
+                    box.className = 'league-category-box bg-gray-50 border rounded-lg p-2 flex flex-col h-56'; 
 
                     const leaguesInCategory = categorized[category].sort().map(league => `
-                        <label class="flex items-center space-x-2 p-1 rounded hover:bg-blue-50 cursor-pointer">
-                            <input type="checkbox" value="${league}" class="league-checkbox form-checkbox h-4 w-4 rounded text-blue-600 border-gray-300 focus:ring-blue-500">
-                            <span class="text-sm text-gray-700 truncate" title="${league}">${league}</span>
-                        </label>`).join('');
+                        <div class="flex items-center justify-between p-1 rounded hover:bg-blue-50 group">
+                            <label class="flex items-center space-x-2 cursor-pointer flex-grow truncate">
+                                <input type="checkbox" value="${league}" class="league-checkbox form-checkbox h-4 w-4 rounded text-blue-600 border-gray-300 focus:ring-blue-500">
+                                <span class="text-sm text-gray-700 truncate" title="${league}">${league}</span>
+                            </label>
+                            <i class="fa-solid fa-star favorite-star ${stagedFavoriteLeagues.includes(league) ? 'is-favorite' : ''}" data-league="${league}"></i>
+                        </div>`).join('');
                     
                     box.innerHTML = `
                         <h4 class="font-semibold text-xs uppercase text-gray-500 mb-1 sticky top-0 bg-gray-50 py-1">
@@ -444,12 +449,16 @@
                 leagueFiltersGrid.querySelectorAll('.category-select-all').forEach(masterCb => {
                     masterCb.addEventListener('change', (e) => {
                         const isChecked = e.target.checked;
-                        const categoryDiv = e.target.closest('.league-category-box'); // BUG FIX
+                        const categoryDiv = e.target.closest('.league-category-box');
                         categoryDiv.querySelectorAll('.league-checkbox').forEach(leagueCb => {
                             leagueCb.checked = isChecked;
                         });
                         applyFiltersAndRender();
                     });
+                });
+                
+                leagueFiltersGrid.querySelectorAll('.favorite-star').forEach(star => {
+                    star.addEventListener('click', handleFavoriteToggle);
                 });
 
                 // Predefined Tips by Market
@@ -597,7 +606,7 @@
                     try {
                         await batch.commit();
                         await loadAllMatches();
-                        setupFilters(); // Re-setup sliders with new ranges
+                        setupFilters(); 
                         populateFilters();
                         applyFiltersAndRender();
                         showModal("Successo", `${dataToUpload.length} partite caricate!`, () => {
@@ -669,6 +678,40 @@
                 sortAndRenderMatches();
             };
             
+            // --- FAVORITES LOGIC ---
+            const loadFavorites = async () => {
+                try {
+                    const favDocRef = doc(db, "preferences", "favoriteLeagues");
+                    const docSnap = await getDoc(favDocRef);
+                    if (docSnap.exists()) {
+                        favoriteLeagues = docSnap.data().leagues || [];
+                        stagedFavoriteLeagues = [...favoriteLeagues]; // Sync staged with saved on load
+                    }
+                } catch(e) { console.error("Error loading favorites:", e); }
+            };
+
+            const handleUpdateFavorites = async () => {
+                favoriteLeagues = [...stagedFavoriteLeagues];
+                try {
+                    await setDoc(doc(db, "preferences", "favoriteLeagues"), { leagues: favoriteLeagues });
+                    populateFilters();
+                    applyFiltersAndRender();
+                    showModal("Successo", "Preferiti aggiornati!", () => {});
+                } catch (e) {
+                    showModal("Errore", `Impossibile salvare i preferiti: ${e.message}`, () => {});
+                }
+            };
+
+            const handleFavoriteToggle = (e) => {
+                const leagueName = e.target.dataset.league;
+                if (stagedFavoriteLeagues.includes(leagueName)) {
+                    stagedFavoriteLeagues = stagedFavoriteLeagues.filter(l => l !== leagueName);
+                } else {
+                    stagedFavoriteLeagues.push(leagueName);
+                }
+                e.target.classList.toggle('is-favorite');
+            };
+            
              // --- SAVED FILTERS LOGIC ---
             const loadSavedFilters = async () => {
                 const presetsCollection = collection(db, "presets");
@@ -709,10 +752,8 @@
 
                 const { state } = selectedFilter;
                 
-                // Reset all filters first
                 resetFiltersBtn.click();
-                setTimeout(() => { // Timeout to allow reset to apply visually
-                    // Apply saved state
+                setTimeout(() => { 
                     filterDateStart.value = state.startDate || '';
                     filterDateEnd.value = state.endDate || '';
                     probabilitySliderEl.noUiSlider.set(state.prob);
@@ -770,8 +811,10 @@
             saveFilterBtn.addEventListener('click', handleSaveFilter);
             loadFilterBtn.addEventListener('click', handleLoadFilter);
             deleteFilterBtn.addEventListener('click', handleDeleteFilter);
+            updateFavoritesBtn.addEventListener('click', handleUpdateFavorites);
             
             await loadAllMatches();
+            await loadFavorites();
             setupFilters();
             populateFilters();
             await loadSavedFilters();
@@ -911,3 +954,4 @@
     </script>
 </body>
 </html>
+
