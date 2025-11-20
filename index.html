@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pronostici BM</title>
+    <title>Pronostici BM (Auth Fix)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -55,9 +55,15 @@
     </style>
 </head>
 <body class="h-full text-gray-800">
-    <div id="loading-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
- 		<div class="text-white text-xl font-semibold animate-pulse">Caricamento Database...</div>
- 	</div>
+    <!-- Overlay di Caricamento e Autenticazione -->
+    <div id="loading-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-90 flex items-center justify-center z-50">
+        <div class="text-center max-w-md px-4">
+            <div id="loading-spinner" class="text-white text-xl font-semibold animate-pulse mb-2">Inizializzazione...</div>
+            <div id="auth-status" class="text-blue-200 text-sm font-mono bg-gray-800 p-2 rounded border border-gray-700">Attesa connessione...</div>
+            <button id="retry-auth-btn" class="hidden mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Riprova</button>
+        </div>
+    </div>
+
     <div class="min-h-full flex flex-col">
         <!-- Header -->
         <header class="bg-white shadow-sm">
@@ -262,9 +268,11 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
         import { getFirestore, collection, getDocs, writeBatch, query, where, doc, addDoc, deleteDoc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
         
+        // ==================== CONFIGURAZIONE FIREBASE CORRETTA ====================
         const firebaseConfig = {
-            apiKey: "AIzaSyCWay4QfY1bxj4yBLnho3Zn02_NaxzbVRQ",
+            apiKey: "AIzaSyCwAy4QfYlbxj4yBLnho3ZnO2_NaxzbVRQ", // Chiave corretta
             authDomain: "betmines-pronostici.firebaseapp.com",
             projectId: "betmines-pronostici",
             storageBucket: "betmines-pronostici.firebasestorage.app",
@@ -273,15 +281,16 @@
         };
         
         let db;
+        let auth;
+        
         try {
             const app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
             db = getFirestore(app);
         } catch (error) {
-            console.error("Firebase Initialization Error:", error);
-            document.addEventListener('DOMContentLoaded', () => {
-                 document.body.innerHTML = `<div class="p-4 bg-red-100 text-red-800">Errore critico durante l'inizializzazione di Firebase. Controlla la console.</div>`;
-            });
-            throw new Error("Firebase init failed");
+            console.error("Critical Firebase Init Error:", error);
+            document.getElementById('auth-status').textContent = "Errore critico inizializzazione.";
+            document.getElementById('auth-status').classList.add('text-red-400');
         }
         
         let allMatches = [];
@@ -293,8 +302,71 @@
         let sortState = { column: 'data', direction: 'desc' };
 
         document.addEventListener('DOMContentLoaded', async () => {
-           
-            // --- UI elements ---
+            const loadingOverlay = document.getElementById('loading-overlay');
+            const authStatus = document.getElementById('auth-status');
+            const retryBtn = document.getElementById('retry-auth-btn');
+            
+            // --- GESTIONE AUTH ---
+            async function authenticate() {
+                authStatus.textContent = "Connessione a Firebase...";
+                authStatus.className = "text-blue-200 text-sm font-mono bg-gray-800 p-2 rounded border border-gray-700";
+                retryBtn.classList.add('hidden');
+                
+                try {
+                    await signInAnonymously(auth);
+                    authStatus.textContent = "Autenticato. Caricamento dati...";
+                    authStatus.className = "text-green-400 text-sm font-mono bg-gray-800 p-2 rounded border border-green-700";
+                    
+                    // Avvia l'app vera e propria solo DOPO l'autenticazione
+                    await startApp();
+                    
+                } catch (error) {
+                    console.error("Auth Error:", error);
+                    let msg = "Errore sconosciuto.";
+                    if(error.code === 'auth/api-key-not-valid') {
+                        msg = "CHIAVE API NON VALIDA. Controlla il codice HTML.";
+                    } else if(error.code === 'auth/operation-not-allowed') {
+                        msg = "AUTH ANONIMA NON ABILITATA in Firebase Console.";
+                    } else {
+                        msg = error.message;
+                    }
+                    
+                    authStatus.innerHTML = `<strong class="text-red-500">ERRORE:</strong><br>${msg}`;
+                    authStatus.className = "text-red-300 text-xs font-mono bg-red-900/50 p-2 rounded border border-red-700 text-left break-words";
+                    document.getElementById('loading-spinner').textContent = "⚠️ Connessione Fallita";
+                    document.getElementById('loading-spinner').classList.remove('animate-pulse');
+                    retryBtn.classList.remove('hidden');
+                }
+            }
+            
+            retryBtn.addEventListener('click', authenticate);
+
+            // --- START APP LOGIC ---
+            async function startApp() {
+                try {
+                    // Inizializza date
+                    const yesterday = new Date();
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    document.getElementById('match-date').value = yesterday.toISOString().split('T')[0];
+                    document.getElementById('delete-date').value = yesterday.toISOString().split('T')[0];
+
+                    // Carica dati iniziali
+                    await loadAllMatches();
+                    await loadFavorites();
+                    setupFilters();
+                    populateFilters();
+                    await loadSavedFilters();
+                    
+                    showPage('page-dashboard');
+                    loadingOverlay.classList.add('hidden');
+                } catch (e) {
+                    console.error("Data Load Error:", e);
+                    authStatus.textContent = "Errore caricamento dati Firestore.";
+                    authStatus.classList.add('text-red-400');
+                }
+            }
+
+            // UI elements & Listeners
             const pages = document.querySelectorAll('.page');
             const navButtons = document.querySelectorAll('.nav-button');
             const matchDateInput = document.getElementById('match-date');
@@ -314,7 +386,6 @@
             const resetFiltersBtn = document.getElementById('reset-filters-btn');
             const resetLeaguesBtn = document.getElementById('reset-leagues-btn');
             const resetTipsBtn = document.getElementById('reset-tips-btn');
-            const loadingOverlay = document.getElementById('loading-overlay');
             const sortableHeaders = document.querySelectorAll('.sortable-header');
             const searchInput = document.getElementById('search-input');
             const savedFiltersSelect = document.getElementById('saved-filters-select');
@@ -324,24 +395,41 @@
             const saveFilterBtn = document.getElementById('save-filter-btn');
             const updateFavoritesBtn = document.getElementById('update-favorites-btn');
 
+            // --- LISTENERS SETUP ---
+            navButtons.forEach(btn => btn.addEventListener('click', () => showPage(btn.dataset.page)));
+            csvFileInput.addEventListener('change', handleFileUpload);
+            deleteByDateBtn.addEventListener('click', handleDeleteByDate);
+            clearDbBtn.addEventListener('click', handleClearAllData);
+            exportDbBtn.addEventListener('click', () => exportToCsv(allMatches, 'pronostici_bm_database.csv'));
+            exportFilteredBtn.addEventListener('click', () => exportToCsv(filteredMatches, 'pronostici_bm_filtrati.csv'));
+            sortableHeaders.forEach(header => header.addEventListener('click', handleSort));
+            saveFilterBtn.addEventListener('click', handleSaveFilter);
+            loadFilterBtn.addEventListener('click', handleLoadFilter);
+            deleteFilterBtn.addEventListener('click', handleDeleteFilter);
+            updateFavoritesBtn.addEventListener('click', handleUpdateFavorites);
+
+            // Avvia flusso auth
+            authenticate();
+
             // --- CORE FUNCTIONS ---
 
-            const showPage = (pageId) => {
+            function showPage(pageId) {
                 pages.forEach(page => page.classList.remove('active'));
                 document.getElementById(pageId).classList.add('active');
                 navButtons.forEach(btn => {
-                    btn.classList.toggle('bg-blue-600', btn.dataset.page === pageId);
-                    btn.classList.toggle('text-white', btn.dataset.page === pageId);
-                    btn.classList.toggle('bg-gray-200', btn.dataset.page !== pageId);
-                    btn.classList.toggle('text-gray-700', btn.dataset.page !== pageId);
+                    const isActive = btn.dataset.page === pageId;
+                    btn.classList.toggle('bg-blue-600', isActive);
+                    btn.classList.toggle('text-white', isActive);
+                    btn.classList.toggle('bg-gray-200', !isActive);
+                    btn.classList.toggle('text-gray-700', !isActive);
                 });
                 if (pageId === 'page-dashboard') {
                     applyFiltersAndRender();
                 }
             };
 
-            const loadAllMatches = async () => {
-                loadingOverlay.style.display = 'flex';
+            async function loadAllMatches() {
+                // loadingOverlay già gestito da authenticate/startApp
                 const matchesCollection = collection(db, "matches");
                 try {
                     const snapshot = await getDocs(matchesCollection);
@@ -353,18 +441,17 @@
                 } catch(e) {
                     console.error("Error loading matches: ", e);
                     showModal("Errore di Caricamento", "Impossibile caricare i dati dal database.", () => {});
-                } finally {
-                    loadingOverlay.style.display = 'none';
+                    throw e; // Rilancia per essere catturato da startApp
                 }
             };
             
-            const applyFiltersAndRender = () => {
+            function applyFiltersAndRender() {
                 const startDate = filterDateStart.value;
                 const endDate = filterDateEnd.value;
                 const selectedLeagues = Array.from(leagueFiltersGrid.querySelectorAll('input.league-checkbox:checked')).map(cb => cb.value);
                 const selectedTips = Array.from(tipFiltersContainer.querySelectorAll('.tip-button.active')).map(btn => btn.dataset.tip);
-                const [minProb, maxProb] = probabilitySliderEl.noUiSlider.get();
-                const [minOdds, maxOdds] = oddsSliderEl.noUiSlider.get();
+                const [minProb, maxProb] = probabilitySliderEl.noUiSlider ? probabilitySliderEl.noUiSlider.get() : [0, 100];
+                const [minOdds, maxOdds] = oddsSliderEl.noUiSlider ? oddsSliderEl.noUiSlider.get() : [0, 100];
                 const searchTerm = searchInput.value.toLowerCase();
 
                 filteredMatches = allMatches.filter(m => {
@@ -372,8 +459,8 @@
                     if (endDate && m.data > endDate) return false;
                     if (selectedLeagues.length > 0 && !selectedLeagues.includes(m.lega)) return false;
                     if (selectedTips.length > 0 && !selectedTips.includes(m.tip)) return false;
-                    if (m.probabilita < minProb || m.probabilita > maxProb) return false;
-                    if (m.quota < minOdds || m.quota > maxOdds) return false;
+                    if (probabilitySliderEl.noUiSlider && (m.probabilita < minProb || m.probabilita > maxProb)) return false;
+                    if (oddsSliderEl.noUiSlider && (m.quota < minOdds || m.quota > maxOdds)) return false;
                     if (searchTerm && !m.partita.toLowerCase().includes(searchTerm) && !m.lega.toLowerCase().includes(searchTerm)) return false;
                     return true;
                 });
@@ -382,12 +469,12 @@
                 renderStats(filteredMatches);
             };
             
-            const normalizeLega = (lega) => {
+            function normalizeLega(lega) {
                 if (!lega) return '';
                 return lega.replace(': Girone', ' Girone').replace('EU-PRT', 'EU-POR');
             };
             
-            const categorizeLeague = (leagueName) => {
+            function categorizeLeague(leagueName) {
                 if (favoriteLeagues.includes(leagueName)) return '⭐ Preferiti';
                 if (leagueName.startsWith('EU-CL') || leagueName.startsWith('EU-EL') || leagueName.startsWith('EU-ECL')) return 'Coppe Europee';
                 if (leagueName.includes('WCQ') || leagueName.endsWith('-NAZ')) return 'Competizioni Nazionali';
@@ -402,7 +489,7 @@
                 return 'Non Classificati';
             };
 
-            const populateFilters = () => {
+            function populateFilters() {
                 // Leagues
                 const leagues = [...new Set(allMatches.map(m => m.lega))];
                 const categorized = leagues.reduce((acc, league) => {
@@ -490,7 +577,7 @@
                 });
             };
 
-            const setupFilters = () => {
+            function setupFilters() {
                 // Sliders with dynamic range
                 const probs = allMatches.map(m => m.probabilita).filter(p => p);
                 const odds = allMatches.map(m => m.quota).filter(q => q);
@@ -540,7 +627,7 @@
                 });
             };
             
-            const handleFileUpload = (event) => {
+            function handleFileUpload(event) {
                 const file = event.target.files[0];
                 if (!file || !matchDateInput.value) {
                     showModal("Errore", "Seleziona sia una data che un file CSV.", () => {});
@@ -553,7 +640,7 @@
                 });
             };
             
-             const processAndPreviewCSV = (parsedData, matchDate) => {
+             function processAndPreviewCSV(parsedData, matchDate) {
                 let potentialMatches = [], duplicates = 0, incomplete = 0;
                 const requiredFields = ['Lega', 'Partita', 'Risultato', 'Probabilità', 'Mercato', 'Tip', 'Quota'];
                 const existingMatchSignatures = new Set(allMatches.map(m => `${m.data}-${m.lega}-${m.partita}-${m.tip}`));
@@ -593,7 +680,7 @@
                 document.getElementById('confirm-upload-btn').addEventListener('click', handleUploadConfirmed);
             };
 
-            const handleUploadConfirmed = async () => {
+            async function handleUploadConfirmed() {
                 if (dataToUpload.length === 0) return;
                 showModal("Conferma Caricamento", `Stai per aggiungere ${dataToUpload.length} partite. Procedere?`, async () => {
                     const matchesCollection = collection(db, "matches");
@@ -617,7 +704,7 @@
                 }, true);
             };
 
-            const handleDeleteByDate = async () => {
+            async function handleDeleteByDate() {
                 const dateToDelete = deleteDateInput.value;
                 if (!dateToDelete) { showModal("Errore", "Seleziona una data.", () => {}); return; }
                 showModal("Conferma Cancellazione", `Cancellare tutte le partite del ${dateToDelete}? L'azione è irreversibile.`, async () => {
@@ -635,7 +722,7 @@
                 }, true);
             };
 
-            const handleClearAllData = async () => {
+            async function handleClearAllData() {
                 showModal("CONFERMA DEFINITIVA", `CANCELLARE TUTTO il database? L'azione non può essere annullata.`, async () => {
                     const snapshot = await getDocs(collection(db, "matches"));
                     if(snapshot.empty) { showModal("Info", "Database già vuoto.", () => {}); return; }
@@ -650,7 +737,7 @@
                 }, true);
             };
             
-            const exportToCsv = (data, filename) => {
+            function exportToCsv(data, filename) {
                 if (data.length === 0) {
                     showModal("Esportazione", "Nessun dato da esportare.", () => {});
                     return;
@@ -667,7 +754,7 @@
                 document.body.removeChild(link);
             };
 
-            const handleSort = (e) => {
+            function handleSort(e) {
                 const newColumn = e.currentTarget.dataset.sort;
                 if (sortState.column === newColumn) {
                     sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
@@ -679,7 +766,7 @@
             };
             
             // --- FAVORITES LOGIC ---
-            const loadFavorites = async () => {
+            async function loadFavorites() {
                 try {
                     const favDocRef = doc(db, "preferences", "favoriteLeagues");
                     const docSnap = await getDoc(favDocRef);
@@ -690,7 +777,7 @@
                 } catch(e) { console.error("Error loading favorites:", e); }
             };
 
-            const handleUpdateFavorites = async () => {
+            async function handleUpdateFavorites() {
                 favoriteLeagues = [...stagedFavoriteLeagues];
                 try {
                     await setDoc(doc(db, "preferences", "favoriteLeagues"), { leagues: favoriteLeagues });
@@ -702,7 +789,7 @@
                 }
             };
 
-            const handleFavoriteToggle = (e) => {
+            function handleFavoriteToggle(e) {
                 const leagueName = e.target.dataset.league;
                 if (stagedFavoriteLeagues.includes(leagueName)) {
                     stagedFavoriteLeagues = stagedFavoriteLeagues.filter(l => l !== leagueName);
@@ -713,14 +800,14 @@
             };
             
              // --- SAVED FILTERS LOGIC ---
-            const loadSavedFilters = async () => {
+            async function loadSavedFilters() {
                 const presetsCollection = collection(db, "presets");
                 const snapshot = await getDocs(presetsCollection);
                 savedFilters = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 savedFiltersSelect.innerHTML = '<option value="">Seleziona strategia...</option>' + savedFilters.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
             };
 
-            const handleSaveFilter = async () => {
+            async function handleSaveFilter() {
                 const filterName = newFilterNameInput.value.trim();
                 if (!filterName) {
                     showModal("Errore", "Inserisci un nome per la strategia.", () => {});
@@ -729,8 +816,8 @@
                 const filterState = {
                     leagues: Array.from(leagueFiltersGrid.querySelectorAll('input.league-checkbox:checked')).map(cb => cb.value),
                     tips: Array.from(tipFiltersContainer.querySelectorAll('.tip-button.active')).map(btn => btn.dataset.tip),
-                    prob: probabilitySliderEl.noUiSlider.get(),
-                    odds: oddsSliderEl.noUiSlider.get(),
+                    prob: probabilitySliderEl.noUiSlider ? probabilitySliderEl.noUiSlider.get() : [0, 100],
+                    odds: oddsSliderEl.noUiSlider ? oddsSliderEl.noUiSlider.get() : [0, 100],
                     startDate: filterDateStart.value,
                     endDate: filterDateEnd.value
                 };
@@ -744,7 +831,7 @@
                 }
             };
 
-            const handleLoadFilter = () => {
+            function handleLoadFilter() {
                 const selectedId = savedFiltersSelect.value;
                 if (!selectedId) return;
                 const selectedFilter = savedFilters.find(f => f.id === selectedId);
@@ -756,8 +843,8 @@
                 setTimeout(() => { 
                     filterDateStart.value = state.startDate || '';
                     filterDateEnd.value = state.endDate || '';
-                    probabilitySliderEl.noUiSlider.set(state.prob);
-                    oddsSliderEl.noUiSlider.set(state.odds);
+                    if(probabilitySliderEl.noUiSlider) probabilitySliderEl.noUiSlider.set(state.prob);
+                    if(oddsSliderEl.noUiSlider) oddsSliderEl.noUiSlider.set(state.odds);
                     
                     leagueFiltersGrid.querySelectorAll('input.league-checkbox').forEach(cb => {
                         cb.checked = state.leagues.includes(cb.value);
@@ -775,7 +862,7 @@
                 }, 100);
             };
 
-            const handleDeleteFilter = async () => {
+            async function handleDeleteFilter() {
                  const selectedId = savedFiltersSelect.value;
                 if (!selectedId) {
                     showModal("Attenzione", "Seleziona una strategia da eliminare.", () => {});
@@ -794,31 +881,6 @@
                 }, true);
             };
 
-
-            // --- INIT APP ---
-            const yesterday = new Date();
-            yesterday.setDate(yesterday.getDate() - 1);
-            matchDateInput.value = yesterday.toISOString().split('T')[0];
-            deleteDateInput.value = yesterday.toISOString().split('T')[0];
-
-            navButtons.forEach(btn => btn.addEventListener('click', () => showPage(btn.dataset.page)));
-            csvFileInput.addEventListener('change', handleFileUpload);
-            deleteByDateBtn.addEventListener('click', handleDeleteByDate);
-            clearDbBtn.addEventListener('click', handleClearAllData);
-            exportDbBtn.addEventListener('click', () => exportToCsv(allMatches, 'pronostici_bm_database.csv'));
-            exportFilteredBtn.addEventListener('click', () => exportToCsv(filteredMatches, 'pronostici_bm_filtrati.csv'));
-            sortableHeaders.forEach(header => header.addEventListener('click', handleSort));
-            saveFilterBtn.addEventListener('click', handleSaveFilter);
-            loadFilterBtn.addEventListener('click', handleLoadFilter);
-            deleteFilterBtn.addEventListener('click', handleDeleteFilter);
-            updateFavoritesBtn.addEventListener('click', handleUpdateFavorites);
-            
-            await loadAllMatches();
-            await loadFavorites();
-            setupFilters();
-            populateFilters();
-            await loadSavedFilters();
-            showPage('page-dashboard');
         });
         
         function sortAndRenderMatches() {
@@ -954,4 +1016,3 @@
     </script>
 </body>
 </html>
-
